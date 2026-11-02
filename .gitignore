@@ -1,0 +1,20 @@
+# Wydania (buildy PyInstaller, instalatory .exe) - publikowane jako GitHub Releases
+[0-9]*.[0-9]*.[0-9]*/
+build/
+dist/
+*.spec
+
+# Sekrety wstrzykiwane przy kompilacji (hasło SMTP, klucz szyfrowania)
+Konfiguracja/
+
+# Materiały producentów (prawa autorskie osób trzecich)
+datasheet/
+
+# Logotypy innych firm
+Zasoby/logo_genpower.jpg
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

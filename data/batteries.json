@@ -1,0 +1,33 @@
+{
+    "version": "1.1.0",
+    "batteries": {
+        "Optima YT S 5.5": {
+            "type": "AGM",
+            "voltage_v": 12,
+            "capacity_ah": 75,
+            "cca_a": 975,
+            "mca_a": 1125,
+            "internal_res_ohm": 0.0025,
+            "ocv_v": 13.1,
+            "reserve_capacity_min": 155,
+            "part_number": "851 187 000 888 2",
+            "weight_kg": 26.5,
+            "dimensions_mm": "325x165x238",
+            "batt_path": ""
+        },
+        "Varta ProMotive Super Heavy Duty": {
+            "type": "Lead-Acid",
+            "voltage_v": 12,
+            "capacity_ah": 225,
+            "cca_a": 1150,
+            "mca_a": 1380,
+            "internal_res_ohm": 0.003,
+            "ocv_v": 12.7,
+            "reserve_capacity_min": 450,
+            "part_number": "725 103 115",
+            "weight_kg": 57.0,
+            "dimensions_mm": "518x276x242",
+            "batt_path": ""
+        }
+    }
+}

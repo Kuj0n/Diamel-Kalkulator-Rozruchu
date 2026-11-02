@@ -4,11 +4,16 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "1.0.1"
-DB_VERSION = "1.0.1"
-BUILD_DATE = "2026-10-23 10:00"
+VERSION = "1.1.0"
+DB_VERSION = "1.1.0"
+BUILD_DATE = "2026-11-02 21:00"
 
 CHANGELOG = """
+v1.1.0 (2026-11-02)
+- Aktualizacje programu i bazy danych pobierane z GitHub (github.com/Kuj0n/Diamel-Kalkulator-Rozruchu).
+- Zgłoszenia sprzętu wysyłane przez formularz na diamel.pl - program nie zawiera już hasła do poczty.
+- Program pamięta wersję lokalnej bazy danych.
+
 v1.0.1 (2026-10-23)
 - Aktualizacja danych.
 
@@ -21,6 +26,9 @@ v1.0.0 (2026-10-01)
 """
 
 CHANGELOG_DB = """
+v1.1.0 (2026-11-02)
+- Baza publikowana razem z wydaniem na GitHub.
+
 v1.0.1 (2026-10-23)
 - Aktualizacja danych.
 
@@ -29,13 +37,10 @@ v1.0.0 (2026-10-01)
 - Początkowa baza akumulatorów (Optima, Varta).
 """
 
-# Sekrety do podmiany przy kompilacji
-ENCRYPTION_KEY = b"TUTAJ_KLUCZ"
-EMAIL_NADAWCY = "TUTAJ_NADAWCA"
-HASLO_NADAWCY = "TUTAJ_HASLO"
-EMAIL_ODBIORCY = "TUTAJ_ODBIORCA"
-SMTP_SERVER = "smtp.mail.ovh.net"
-SMTP_PORT = 465
+# Aktualizacje (GitHub Releases) i zgłoszenia (formularz na diamel.pl)
+NAZWA_PROGRAMU = "kalkulator_rozruchu"
+GITHUB_REPO = "Kuj0n/Diamel-Kalkulator-Rozruchu"
+URL_ZGLOSZEN = "https://diamel.pl/api/zgloszenie.php"
 
 def sciezka_do_zasobu(relatywna_sciezka):
     """ Pancerna funkcja szukająca plików zasobów w trybie .exe i developerskim """

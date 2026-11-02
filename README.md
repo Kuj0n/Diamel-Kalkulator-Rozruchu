@@ -2,7 +2,7 @@
 
 Program na Windows do doboru akumulatorów rozruchowych i ładowarek dla agregatów prądotwórczych. Liczy spadki napięć na kablach i rozrusznikach, zapotrzebowanie prądowe, zapas CCA i zużycie pojemności, dobiera prąd ładowarki i generuje raport DOCX (PL / EN).
 
-> Status: **wersja 1.0.1** (2026-10-23)
+> Status: **wersja 1.1.0** (2026-11-02). Instalator: [Releases](../../releases/latest)
 
 ## Możliwości
 
@@ -11,8 +11,8 @@ Program na Windows do doboru akumulatorów rozruchowych i ładowarek dla agregat
 - **Kable i profil rozruchu** - przekroje, długości, liczba i czas prób rozruchu
 - **Wyniki** - analiza CCA, spadki napięć, zużycie pojemności, dobór ładowarki
 - **Raport DOCX** z załącznikami (krzywe rozruszników, karty katalogowe)
-- **Baza rozruszników i akumulatorów** (`data/*.json`) - własne wpisy + aktualizacja bazy globalnej z serwera, zgłaszanie nowego sprzętu e-mailem
-- **Automatyczna aktualizacja** programu i bazy
+- **Baza rozruszników i akumulatorów** (`data/*.json`) - własne wpisy + scalanie z bazą globalną, zgłaszanie nowego sprzętu przez formularz na diamel.pl
+- **Automatyczna aktualizacja** programu i bazy z GitHub Releases
 
 ## Uruchomienie ze źródeł
 
@@ -28,18 +28,17 @@ python main.py
 
 ## Kompilacja
 
-`python kompilacja.py` buduje program (PyInstaller) i instalator (Inno Setup 6) do folderu `<wersja>/`. Hasło SMTP i adresy e-mail do zgłoszeń skrypt wstawia z pliku `Konfiguracja/sekrety.json`, który nie jest częścią repozytorium:
+1. Podnieś `VERSION` / `DB_VERSION` i dopisz zmiany do `CHANGELOG` / `CHANGELOG_DB` w `konfiguracja_app.py`, zrób commit.
+2. `python kompilacja.py` buduje program (PyInstaller) i instalator (Inno Setup 6). Pliki wydania trafiają do `<wersja>/Paczka/`: instalator, `wersja.json`, `starters.json`, `batteries.json`.
+3. Na pytanie o publikację odpowiedz `t` - skrypt wypchnie commit i utworzy wydanie `v<wersja>` na GitHub (wymaga [GitHub CLI](https://cli.github.com/) zalogowanego przez `gh auth login`).
 
-```json
-{
-  "ENCRYPTION_KEY": "...",
-  "EMAIL_NADAWCY": "...",
-  "HASLO_NADAWCY": "...",
-  "EMAIL_ODBIORCY": "..."
-}
-```
+### Jak działają aktualizacje
 
-Bez tego pliku program działa, ale wysyłanie zgłoszeń sprzętu e-mailem kończy się błędem logowania SMTP.
+- **Program**: pyta `api.github.com/repos/Kuj0n/Diamel-Kalkulator-Rozruchu/releases/latest`; numer wersji to tag, lista zmian to opis wydania, instalator to załącznik `.exe`. Wydania oznaczone jako testowe (pre-release) są pomijane.
+- **Baza**: wersja i zmiany bazy są w załączniku `wersja.json`, dane w `starters.json` / `batteries.json`. Program porównuje wersję z polem `version` lokalnej bazy i scala nowe wpisy z własnymi.
+- **Wersje 1.0.x** sprawdzają jeszcze `diamel.pl/kalkulator_rozruchu/changelog/wersja.json` - wgranie tam pliku `wersja.json` z wydania przekierowuje je do instalatora na GitHub.
+
+Program nie zawiera haseł - zgłoszenia sprzętu przyjmuje `diamel.pl/api/zgloszenie.php`.
 
 ## Struktura
 

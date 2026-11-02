@@ -1,7 +1,7 @@
 import os
 import json
 import shutil
-from konfiguracja_app import sciezka_do_zasobu
+from konfiguracja_app import sciezka_do_zasobu, DB_VERSION
 
 class DatabaseModel:
     def __init__(self):
@@ -10,6 +10,7 @@ class DatabaseModel:
         self.batteries_file = os.path.join(self.local_data_dir, "batteries.json")
         self.starters = {}
         self.batteries = {}
+        self.wersja_bazy = DB_VERSION
         self.ensure_local_db()
         self.load_databases()
 
@@ -28,7 +29,9 @@ class DatabaseModel:
         try:
             if os.path.exists(self.starters_file):
                 with open(self.starters_file, "r", encoding="utf-8") as f:
-                    self.starters = json.load(f).get("starters", {})
+                    dane = json.load(f)
+                    self.starters = dane.get("starters", {})
+                    self.wersja_bazy = dane.get("version", self.wersja_bazy)
             if os.path.exists(self.batteries_file):
                 with open(self.batteries_file, "r", encoding="utf-8") as f:
                     self.batteries = json.load(f).get("batteries", {})
@@ -37,11 +40,11 @@ class DatabaseModel:
 
     def save_starters(self):
         with open(self.starters_file, "w", encoding="utf-8") as f:
-            json.dump({"version": "1.0.0", "starters": self.starters}, f, indent=4, ensure_ascii=False)
+            json.dump({"version": self.wersja_bazy, "starters": self.starters}, f, indent=4, ensure_ascii=False)
 
     def save_batteries(self):
         with open(self.batteries_file, "w", encoding="utf-8") as f:
-            json.dump({"version": "1.0.0", "batteries": self.batteries}, f, indent=4, ensure_ascii=False)
+            json.dump({"version": self.wersja_bazy, "batteries": self.batteries}, f, indent=4, ensure_ascii=False)
 
 
 class CalculatorModel:

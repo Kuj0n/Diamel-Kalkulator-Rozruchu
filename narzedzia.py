@@ -4,34 +4,43 @@ import urllib.request
 import threading
 import subprocess
 import tempfile
-import smtplib
+import urllib.error
 import shutil
-from email.message import EmailMessage
 from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from konfiguracja_app import VERSION, DB_VERSION, EMAIL_NADAWCY, HASLO_NADAWCY, EMAIL_ODBIORCY, SMTP_SERVER, SMTP_PORT
+from konfiguracja_app import VERSION, NAZWA_PROGRAMU, GITHUB_REPO, URL_ZGLOSZEN
+
+NAGLOWKI = {'User-Agent': f'Diamel-{NAZWA_PROGRAMU}/{VERSION}'}
+
+def wez_krotke(v): return tuple(map(int, (v.lstrip("vV").split(" ")[0]).split(".")))
+
+def pobierz_json(url, timeout=4.0):
+    req = urllib.request.Request(url, headers=NAGLOWKI)
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        return json.loads(response.read().decode('utf-8'))
+
+def pobierz_wydanie():
+    """Najnowsze wydanie z GitHub Releases. Zwraca (dane wydania, {nazwa załącznika: link})."""
+    dane = pobierz_json(f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest")
+    zalaczniki = {a["name"]: a["browser_download_url"] for a in dane.get("assets", [])}
+    return dane, zalaczniki
 
 # ----------------- AKTUALIZACJE PROGRAMU -----------------
 def sprawdz_aktualizacje(root, tryb="recznie"):
     def task():
-        url_json = "https://diamel.pl/kalkulator_rozruchu/changelog/wersja.json"
         try:
-            req = urllib.request.Request(url_json, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=4.0) as response:
-                dane = json.loads(response.read().decode('utf-8'))
-                wersja_serwera = dane.get("najnowszawersja", "0.0.0")
-                changelog = dane.get("changelog", "Brak informacji o nowościach.")
-                link = dane.get("link", "")
-                
-                def wez_krotke(v): return tuple(map(int, (v.split(" ")[0]).split(".")))
-                    
-                if wez_krotke(wersja_serwera) > wez_krotke(VERSION) and link:
-                    root.after(0, lambda: pokaz_monit_aktualizacji(root, wersja_serwera, link, changelog))
-                elif tryb == "recznie":
-                    msg = f"Posiadasz najnowszą dostępną wersję programu!\n\nTwoja wersja: {VERSION}\nWersja na serwerze: {wersja_serwera}"
-                    root.after(0, lambda: messagebox.showinfo("Aktualizacje Programu", msg, parent=root))
+            dane, zalaczniki = pobierz_wydanie()
+            wersja_serwera = dane.get("tag_name", "0.0.0").lstrip("vV")
+            changelog = dane.get("body") or "Brak informacji o nowościach."
+            link = next((url for nazwa, url in zalaczniki.items() if nazwa.lower().endswith(".exe")), "")
+
+            if wez_krotke(wersja_serwera) > wez_krotke(VERSION) and link:
+                root.after(0, lambda: pokaz_monit_aktualizacji(root, wersja_serwera, link, changelog))
+            elif tryb == "recznie":
+                msg = f"Posiadasz najnowszą dostępną wersję programu!\n\nTwoja wersja: {VERSION}\nWersja na serwerze: {wersja_serwera}"
+                root.after(0, lambda: messagebox.showinfo("Aktualizacje Programu", msg, parent=root))
         except Exception as e:
             if tryb == "recznie":
                 root.after(0, lambda: messagebox.showerror("Błąd połączenia", f"Nie udało się połączyć z serwerem.\nSzczegóły: {e}", parent=root))
@@ -85,51 +94,41 @@ def pobierz_i_zainstaluj(root, link):
 # ----------------- AKTUALIZACJE BAZY DANYCH -----------------
 def sprawdz_aktualizacje_bazy(root, controller, tryb="recznie"):
     def task():
-        url_json = "https://diamel.pl/kalkulator_rozruchu/changelog/wersja.json"
         try:
-            req = urllib.request.Request(url_json, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=4.0) as response:
-                dane = json.loads(response.read().decode('utf-8'))
-                wersja_bazy_serwera = dane.get("wersja_bazy", "0.0.0")
-                changelog_bazy = dane.get("changelog_bazy", "Brak informacji.")
-                
-                def wez_krotke(v): return tuple(map(int, (v.split(" ")[0]).split(".")))
-                    
-                if wez_krotke(wersja_bazy_serwera) > wez_krotke(DB_VERSION):
-                    root.after(0, lambda: pokaz_monit_bazy(root, controller, wersja_bazy_serwera, changelog_bazy))
-                elif tryb == "recznie":
-                    msg = f"Posiadasz najnowszą bazę danych!\n\nTwoja wersja: {DB_VERSION}\nWersja na serwerze: {wersja_bazy_serwera}"
-                    root.after(0, lambda: messagebox.showinfo("Aktualizacje Bazy", msg, parent=root))
+            _, zalaczniki = pobierz_wydanie()
+            if "wersja.json" not in zalaczniki:
+                raise Exception("Najnowsze wydanie nie zawiera informacji o bazie danych.")
+            dane = pobierz_json(zalaczniki["wersja.json"], timeout=10.0)
+            wersja_bazy_serwera = dane.get("wersja_bazy", "0.0.0")
+            changelog_bazy = dane.get("changelog_bazy", "Brak informacji.")
+            wersja_lokalna = controller.db_model.wersja_bazy
+
+            if wez_krotke(wersja_bazy_serwera) > wez_krotke(wersja_lokalna):
+                root.after(0, lambda: pokaz_monit_bazy(root, controller, wersja_bazy_serwera, changelog_bazy, zalaczniki))
+            elif tryb == "recznie":
+                msg = f"Posiadasz najnowszą bazę danych!\n\nTwoja wersja: {wersja_lokalna}\nWersja na serwerze: {wersja_bazy_serwera}"
+                root.after(0, lambda: messagebox.showinfo("Aktualizacje Bazy", msg, parent=root))
         except Exception as e:
             if tryb == "recznie":
                 root.after(0, lambda: messagebox.showerror("Błąd połączenia", f"Nie udało się połączyć z serwerem.\nSzczegóły: {e}", parent=root))
     threading.Thread(target=task, daemon=True).start()
 
-def pokaz_monit_bazy(root, controller, nowa_wersja, changelog):
-    odp = messagebox.askyesno("Nowa wersja Bazy Danych!", f"Wydano nową bazę danych: {nowa_wersja} (Twoja: {DB_VERSION})\n\nZMIANY W BAZIE:\n{changelog}\n\nCzy chcesz pobrać i scalić nową bazę z Twoimi danymi?", parent=root)
-    if odp: 
+def pokaz_monit_bazy(root, controller, nowa_wersja, changelog, zalaczniki):
+    odp = messagebox.askyesno("Nowa wersja Bazy Danych!", f"Wydano nową bazę danych: {nowa_wersja} (Twoja: {controller.db_model.wersja_bazy})\n\nZMIANY W BAZIE:\n{changelog}\n\nCzy chcesz pobrać i scalić nową bazę z Twoimi danymi?", parent=root)
+    if odp:
         chce_kopie = messagebox.askyesno("Kopia zapasowa", "Zanim zaktualizuję dane, czy chcesz utworzyć kopię zapasową swojej obecnej bazy danych?", parent=root)
-        pobierz_i_scal_baze(root, controller, chce_kopie)
+        pobierz_i_scal_baze(root, controller, chce_kopie, nowa_wersja, zalaczniki)
 
-def pobierz_i_scal_baze(root, controller, zrob_kopie):
+def pobierz_i_scal_baze(root, controller, zrob_kopie, nowa_wersja, zalaczniki):
     def task():
         try:
-            url_starters = "https://diamel.pl/kalkulator_rozruchu/aplikacja/data/starters.json"
-            url_batteries = "https://diamel.pl/kalkulator_rozruchu/aplikacja/data/batteries.json"
-            
             nowe_starters, nowe_batteries = {}, {}
-            
-            try:
-                req_s = urllib.request.Request(url_starters, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req_s, timeout=10.0) as resp:
-                    nowe_starters = json.loads(resp.read().decode('utf-8')).get("starters", {})
-            except: pass
-            
-            try:
-                req_b = urllib.request.Request(url_batteries, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req_b, timeout=10.0) as resp:
-                    nowe_batteries = json.loads(resp.read().decode('utf-8')).get("batteries", {})
-            except: pass
+            if "starters.json" in zalaczniki:
+                nowe_starters = pobierz_json(zalaczniki["starters.json"], timeout=10.0).get("starters", {})
+            if "batteries.json" in zalaczniki:
+                nowe_batteries = pobierz_json(zalaczniki["batteries.json"], timeout=10.0).get("batteries", {})
+            if not nowe_starters and not nowe_batteries:
+                raise Exception("Nie udało się pobrać plików bazy z serwera.")
 
             db_model = controller.db_model
             bkp_name = ""
@@ -145,7 +144,8 @@ def pobierz_i_scal_baze(root, controller, zrob_kopie):
             
             if nowe_starters: db_model.starters.update(nowe_starters)
             if nowe_batteries: db_model.batteries.update(nowe_batteries)
-                
+            db_model.wersja_bazy = nowa_wersja
+
             db_model.save_starters()
             db_model.save_batteries()
             
@@ -194,26 +194,20 @@ def pokaz_okno_zgloszenia_sprzetu(root):
         
         def task():
             try:
-                msg = EmailMessage()
-                msg['Subject'] = f"Prośba o dodanie do Bazy ({t}) - Kalkulator Rozruchu"
-                msg['From'] = EMAIL_NADAWCY
-                msg['To'] = EMAIL_ODBIORCY
-                msg['Cc'] = e
-                
-                tresc = f"Nowa prośba o analizę i dodanie do globalnej bazy kalkulatora rozruchu:\n\n" \
-                        f"Zgłaszający: {e}\n" \
-                        f"Kategoria: {t}\n" \
-                        f"Nazwa elementu: {n}\n\n" \
-                        f"--- DODATKOWY OPIS / LINKI ---\n" \
-                        f"{o}"
-                        
-                msg.set_content(tresc)
+                zgloszenie = {"program": NAZWA_PROGRAMU, "wersja": VERSION, "email": e, "kategoria": t, "nazwa": n, "opis": o}
+                req = urllib.request.Request(URL_ZGLOSZEN, data=json.dumps(zgloszenie).encode('utf-8'),
+                                             headers={**NAGLOWKI, 'Content-Type': 'application/json'})
+                try:
+                    with urllib.request.urlopen(req, timeout=15.0) as response:
+                        wynik = json.loads(response.read().decode('utf-8'))
+                except urllib.error.HTTPError as http_err:
+                    # Serwer odrzucił zgłoszenie - powód jest w treści odpowiedzi
+                    try: wynik = json.loads(http_err.read().decode('utf-8'))
+                    except Exception: raise http_err
+                if not wynik.get("ok"):
+                    raise Exception(wynik.get("blad", "Nieznany błąd serwera."))
 
-                with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
-                    server.login(EMAIL_NADAWCY, HASLO_NADAWCY)
-                    server.send_message(msg)
-
-                pop.after(0, lambda: messagebox.showinfo("Wysłano", "Prośba o dodanie sprzętu została przekazana inżynierowi. Kopia powędrowała do Ciebie na maila.\n\nDziękujemy!", parent=pop))
+                pop.after(0, lambda: messagebox.showinfo("Wysłano", "Prośba o dodanie sprzętu została przekazana inżynierowi. Odpowiemy na podany adres e-mail.\n\nDziękujemy!", parent=pop))
                 pop.after(0, pop.destroy)
             except Exception as exc:
                 pop.after(0, lambda: messagebox.showerror("Błąd", f"Nie udało się wysłać:\n{exc}", parent=pop))

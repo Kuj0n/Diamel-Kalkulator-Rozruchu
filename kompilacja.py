@@ -10,7 +10,7 @@ folder_data = "data"
 plik_glowny = "main.py"
 pliki_modulow = ["modele.py", "widoki.py", "kontrolery.py", "narzedzia.py", "konfiguracja_app.py"]
 plik_ikony = os.path.join(folder_zasoby, "ikona.ico")
-plik_sekretow = os.path.join("Konfiguracja", "sekrety.json")
+pliki_bazy = ["starters.json", "batteries.json"]
 
 inno_setup_compiler = r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 if not os.path.exists(inno_setup_compiler):
@@ -26,35 +26,32 @@ wersja_bazy = re.search(r'DB_VERSION\s*=\s*"([^"]+)"', kod_konf).group(1)
 data_wydania = re.search(r'BUILD_DATE\s*=\s*"([^"]+)"', kod_konf).group(1)[:10]
 changelog_full = re.search(r'CHANGELOG\s*=\s*"""(.*?)"""', kod_konf, re.DOTALL).group(1).strip()
 changelog_db = re.search(r'CHANGELOG_DB\s*=\s*"""(.*?)"""', kod_konf, re.DOTALL).group(1).strip()
+github_repo = re.search(r'GITHUB_REPO\s*=\s*"([^"]+)"', kod_konf).group(1)
 
-if os.path.exists(plik_sekretow):
-    print("🔐 Wstrzykiwanie sekretów do kompilacji...")
-    with open(plik_sekretow, "r", encoding="utf-8") as fs: sekrety = json.load(fs)
-    kod_konf = re.sub(r'ENCRYPTION_KEY\s*=\s*b"[^"]*"', f'ENCRYPTION_KEY = b"{sekrety.get("ENCRYPTION_KEY", "")}"', kod_konf)
-    kod_konf = re.sub(r'EMAIL_NADAWCY\s*=\s*"[^"]*"', f'EMAIL_NADAWCY = "{sekrety.get("EMAIL_NADAWCY", "")}"', kod_konf)
-    kod_konf = re.sub(r'HASLO_NADAWCY\s*=\s*"[^"]*"', f'HASLO_NADAWCY = "{sekrety.get("HASLO_NADAWCY", "")}"', kod_konf)
-    kod_konf = re.sub(r'EMAIL_ODBIORCY\s*=\s*"[^"]*"', f'EMAIL_ODBIORCY = "{sekrety.get("EMAIL_ODBIORCY", "")}"', kod_konf)
-
+# Paczka = pliki wydania na GitHub (instalator, wersja.json, baza danych)
 folder_archiwum = os.path.join(wersja, "Archiwum")
 folder_paczka = os.path.join(wersja, "Paczka")
-sciezka_ftp_app = os.path.join(folder_paczka, "kalkulator_rozruchu", "aplikacja")
-sciezka_ftp_log = os.path.join(folder_paczka, "kalkulator_rozruchu", "changelog")
 
 os.makedirs(folder_archiwum, exist_ok=True)
-os.makedirs(sciezka_ftp_app, exist_ok=True)
-os.makedirs(sciezka_ftp_log, exist_ok=True)
+os.makedirs(folder_paczka, exist_ok=True)
+
+def zapisz_baze(plik_zrodlowy, plik_docelowy):
+    """Kopiuje plik bazy z wpisaną wersją bazy z konfiguracji (program porównuje ją przy aktualizacji)."""
+    with open(plik_zrodlowy, "r", encoding="utf-8") as f: dane = json.load(f)
+    dane["version"] = wersja_bazy
+    with open(plik_docelowy, "w", encoding="utf-8") as f: json.dump(dane, f, ensure_ascii=False, indent=4)
 
 print("📂 Kopiowanie rozdzielonych modułów, danych i zasobów...")
-with open(os.path.join(folder_archiwum, "konfiguracja_app.py"), "w", encoding="utf-8") as f: f.write(kod_konf)
-
 for m_plik in [plik_glowny] + pliki_modulow:
     if os.path.exists(m_plik): shutil.copy(m_plik, os.path.join(folder_archiwum, m_plik))
 
 if os.path.exists(folder_zasoby):
     shutil.copytree(folder_zasoby, os.path.join(folder_archiwum, folder_zasoby), dirs_exist_ok=True)
 
-if os.path.exists(folder_data):
-    shutil.copytree(folder_data, os.path.join(folder_archiwum, folder_data), dirs_exist_ok=True)
+os.makedirs(os.path.join(folder_archiwum, folder_data), exist_ok=True)
+for plik in pliki_bazy:
+    zapisz_baze(os.path.join(folder_data, plik), os.path.join(folder_archiwum, folder_data, plik))
+    zapisz_baze(os.path.join(folder_data, plik), os.path.join(folder_paczka, plik))
 
 ikona_skopiowana = False
 if os.path.exists(plik_ikony): 
@@ -78,24 +75,19 @@ log_wersji = match.group(1).strip() if match else f"v{wersja}\nZaktualizowano."
 match_db = re.search(rf'(v{wersja_bazy}.*?)(?=\nv\d+\.\d+|$)', changelog_db, re.DOTALL)
 log_bazy = match_db.group(1).strip() if match_db else f"v{wersja_bazy}\nZaktualizowano."
 
+# wersja.json: załącznik wydania (wersja i zmiany bazy). Ten sam plik wgrany na
+# diamel.pl/kalkulator_rozruchu/changelog/ prowadzi wersje 1.0.x do instalatora z GitHuba.
 dane_json = {
     "najnowszawersja": wersja,
-    "link": f"https://diamel.pl/kalkulator_rozruchu/aplikacja/{nazwa_instalatora_exe}",
+    "link": f"https://github.com/{github_repo}/releases/download/v{wersja}/{nazwa_instalatora_exe}",
     "data": data_wydania,
     "changelog": log_wersji,
     "wersja_bazy": wersja_bazy,
-    "link_bazy": "https://diamel.pl/kalkulator_rozruchu/aplikacja/data_package.zip", 
     "changelog_bazy": log_bazy
 }
 
-with open(os.path.join(sciezka_ftp_log, "wersja.json"), "w", encoding="utf-8") as f:
+with open(os.path.join(folder_paczka, "wersja.json"), "w", encoding="utf-8") as f:
     json.dump(dane_json, f, ensure_ascii=False, indent=4)
-
-if os.path.exists(folder_data):
-    docelowy_data_ftp = os.path.join(sciezka_ftp_app, "data")
-    if os.path.exists(docelowy_data_ftp):
-        shutil.rmtree(docelowy_data_ftp)
-    shutil.copytree(folder_data, docelowy_data_ftp)
 
 print(f"⏳ Kompilacja struktury programu dla wersji {wersja}...")
 
@@ -126,7 +118,7 @@ DefaultDirName={{autopf}}\\Kalkulator Rozruchu
 DefaultGroupName=Kalkulator Rozruchu
 DisableWelcomePage=no
 DisableProgramGroupPage=yes
-OutputDir={os.path.abspath(sciezka_ftp_app)}
+OutputDir={os.path.abspath(folder_paczka)}
 OutputBaseFilename=Instalator_Rozruchu_v{wersja}
 {inno_icon_line}
 Compression=lzma2/ultra
@@ -154,5 +146,24 @@ plik_iss = os.path.join(folder_archiwum, "skrypt_instalatora.iss")
 with open(plik_iss, "w", encoding="utf-8") as f: f.write(inno_skrypt)
 
 print("📦 Kompresowanie instalatora...")
-subprocess.run(f'"{inno_setup_compiler}" "{plik_iss}"', shell=True)
+subprocess.run(f'"{inno_setup_compiler}" "{plik_iss}"', shell=True, check=True)
 print(f"🚀 SUKCES! Wersja: {wersja} gotowa w folderze Paczka.")
+
+# --- PUBLIKACJA NA GITHUB ---
+pliki_wydania = [os.path.join(folder_paczka, p) for p in [nazwa_instalatora_exe, "wersja.json"] + pliki_bazy]
+notatki = f"{log_wersji}\n\nBaza danych:\n{log_bazy}"
+
+odp = input(f"\n🌐 Opublikować wydanie v{wersja} na GitHub ({github_repo})? [t/N]: ").strip().lower()
+if odp == "t":
+    gh = shutil.which("gh") or r"C:\Program Files\GitHub CLI\gh.exe"
+    if subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout.strip():
+        print("❌ Niezatwierdzone zmiany w repozytorium - najpierw commit, potem ponów publikację.")
+        exit(1)
+    subprocess.run(["git", "push", "origin", "HEAD"], check=True)
+    subprocess.run([gh, "release", "create", f"v{wersja}", *pliki_wydania, "--repo", github_repo,
+                    "--target", "master", "--title", f"v{wersja}", "--notes", notatki], check=True)
+    print(f"✅ Opublikowano: https://github.com/{github_repo}/releases/tag/v{wersja}")
+    print(f"ℹ️ Starsze wersje (1.0.x) sprawdzają diamel.pl - wgraj {os.path.join(folder_paczka, 'wersja.json')}")
+    print("   do katalogu kalkulator_rozruchu/changelog/ na serwerze.")
+else:
+    print("Publikację pominięto. Pliki wydania są w folderze Paczka.")

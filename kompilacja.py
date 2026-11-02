@@ -22,13 +22,14 @@ with open("konfiguracja_app.py", "r", encoding="utf-8") as f:
     kod_konf = f.read()
 
 wersja = re.search(r'VERSION\s*=\s*"([^"]+)"', kod_konf).group(1)
-wersja_bazy = re.search(r'DB_VERSION\s*=\s*"([^"]+)"', kod_konf).group(1)
 data_wydania = re.search(r'BUILD_DATE\s*=\s*"([^"]+)"', kod_konf).group(1)[:10]
 changelog_full = re.search(r'CHANGELOG\s*=\s*"""(.*?)"""', kod_konf, re.DOTALL).group(1).strip()
-changelog_db = re.search(r'CHANGELOG_DB\s*=\s*"""(.*?)"""', kod_konf, re.DOTALL).group(1).strip()
 github_repo = re.search(r'GITHUB_REPO\s*=\s*"([^"]+)"', kod_konf).group(1)
+with open(os.path.join(folder_data, "wersja_bazy.json"), "r", encoding="utf-8") as f:
+    wersja_bazy = json.load(f)["version"]
 
-# Paczka = pliki wydania na GitHub (instalator, wersja.json, baza danych)
+# Paczka = pliki wydania na GitHub (instalator). Baza nie jest częścią wydania -
+# program pobiera data/*.json z gałęzi master repozytorium.
 folder_archiwum = os.path.join(wersja, "Archiwum")
 folder_paczka = os.path.join(wersja, "Paczka")
 
@@ -36,7 +37,7 @@ os.makedirs(folder_archiwum, exist_ok=True)
 os.makedirs(folder_paczka, exist_ok=True)
 
 def zapisz_baze(plik_zrodlowy, plik_docelowy):
-    """Kopiuje plik bazy z wpisaną wersją bazy z konfiguracji (program porównuje ją przy aktualizacji)."""
+    """Kopiuje plik bazy z wersją z data/wersja_bazy.json (program porównuje ją przy aktualizacji)."""
     with open(plik_zrodlowy, "r", encoding="utf-8") as f: dane = json.load(f)
     dane["version"] = wersja_bazy
     with open(plik_docelowy, "w", encoding="utf-8") as f: json.dump(dane, f, ensure_ascii=False, indent=4)
@@ -51,7 +52,6 @@ if os.path.exists(folder_zasoby):
 os.makedirs(os.path.join(folder_archiwum, folder_data), exist_ok=True)
 for plik in pliki_bazy:
     zapisz_baze(os.path.join(folder_data, plik), os.path.join(folder_archiwum, folder_data, plik))
-    zapisz_baze(os.path.join(folder_data, plik), os.path.join(folder_paczka, plik))
 
 ikona_skopiowana = False
 if os.path.exists(plik_ikony): 
@@ -71,23 +71,6 @@ with open(os.path.join(folder_archiwum, "wersja_info.txt"), "w", encoding="utf-8
 wzorzec = rf'(v{wersja}.*?)(?=\nv\d+\.\d+|$)'
 match = re.search(wzorzec, changelog_full, re.DOTALL)
 log_wersji = match.group(1).strip() if match else f"v{wersja}\nZaktualizowano."
-
-match_db = re.search(rf'(v{wersja_bazy}.*?)(?=\nv\d+\.\d+|$)', changelog_db, re.DOTALL)
-log_bazy = match_db.group(1).strip() if match_db else f"v{wersja_bazy}\nZaktualizowano."
-
-# wersja.json: załącznik wydania (wersja i zmiany bazy). Ten sam plik wgrany na
-# diamel.pl/kalkulator_rozruchu/changelog/ prowadzi wersje 1.0.x do instalatora z GitHuba.
-dane_json = {
-    "najnowszawersja": wersja,
-    "link": f"https://github.com/{github_repo}/releases/download/v{wersja}/{nazwa_instalatora_exe}",
-    "data": data_wydania,
-    "changelog": log_wersji,
-    "wersja_bazy": wersja_bazy,
-    "changelog_bazy": log_bazy
-}
-
-with open(os.path.join(folder_paczka, "wersja.json"), "w", encoding="utf-8") as f:
-    json.dump(dane_json, f, ensure_ascii=False, indent=4)
 
 print(f"⏳ Kompilacja struktury programu dla wersji {wersja}...")
 
@@ -150,9 +133,6 @@ subprocess.run(f'"{inno_setup_compiler}" "{plik_iss}"', shell=True, check=True)
 print(f"🚀 SUKCES! Wersja: {wersja} gotowa w folderze Paczka.")
 
 # --- PUBLIKACJA NA GITHUB ---
-pliki_wydania = [os.path.join(folder_paczka, p) for p in [nazwa_instalatora_exe, "wersja.json"] + pliki_bazy]
-notatki = f"{log_wersji}\n\nBaza danych:\n{log_bazy}"
-
 odp = input(f"\n🌐 Opublikować wydanie v{wersja} na GitHub ({github_repo})? [t/N]: ").strip().lower()
 if odp == "t":
     gh = shutil.which("gh") or r"C:\Program Files\GitHub CLI\gh.exe"
@@ -160,10 +140,8 @@ if odp == "t":
         print("❌ Niezatwierdzone zmiany w repozytorium - najpierw commit, potem ponów publikację.")
         exit(1)
     subprocess.run(["git", "push", "origin", "HEAD"], check=True)
-    subprocess.run([gh, "release", "create", f"v{wersja}", *pliki_wydania, "--repo", github_repo,
-                    "--target", "master", "--title", f"v{wersja}", "--notes", notatki], check=True)
+    subprocess.run([gh, "release", "create", f"v{wersja}", os.path.join(folder_paczka, nazwa_instalatora_exe),
+                    "--repo", github_repo, "--target", "master", "--title", f"v{wersja}", "--notes", log_wersji], check=True)
     print(f"✅ Opublikowano: https://github.com/{github_repo}/releases/tag/v{wersja}")
-    print(f"ℹ️ Starsze wersje (1.0.x) sprawdzają diamel.pl - wgraj {os.path.join(folder_paczka, 'wersja.json')}")
-    print("   do katalogu kalkulator_rozruchu/changelog/ na serwerze.")
 else:
-    print("Publikację pominięto. Pliki wydania są w folderze Paczka.")
+    print("Publikację pominięto. Instalator jest w folderze Paczka.")

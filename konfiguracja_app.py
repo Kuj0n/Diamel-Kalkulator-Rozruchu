@@ -4,11 +4,14 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "1.1.0"
-DB_VERSION = "1.1.0"
-BUILD_DATE = "2026-11-02 21:00"
+VERSION = "1.2.0"
+DB_VERSION = "1.1.0"  # wersja bazy, gdy lokalny plik jej nie zawiera; aktualna wersja i historia: data/wersja_bazy.json
+BUILD_DATE = "2026-11-02 23:30"
 
 CHANGELOG = """
+v1.2.0 (2026-11-02)
+- Baza urządzeń aktualizowana z repozytorium - nowe rozruszniki i akumulatory bez instalowania nowej wersji programu.
+
 v1.1.0 (2026-11-02)
 - Aktualizacje programu i bazy danych pobierane z GitHub (github.com/Kuj0n/Diamel-Kalkulator-Rozruchu).
 - Zgłoszenia sprzętu wysyłane przez formularz na diamel.pl - program nie zawiera już hasła do poczty.
@@ -25,21 +28,10 @@ v1.0.0 (2026-10-01)
 - Generowanie zaawansowanych raportów DOCX.
 """
 
-CHANGELOG_DB = """
-v1.1.0 (2026-11-02)
-- Baza publikowana razem z wydaniem na GitHub.
-
-v1.0.1 (2026-10-23)
-- Aktualizacja danych.
-
-v1.0.0 (2026-10-01)
-- Początkowa baza rozruszników (Delco Remy, Bosch).
-- Początkowa baza akumulatorów (Optima, Varta).
-"""
-
-# Aktualizacje (GitHub Releases) i zgłoszenia (formularz na diamel.pl)
+# Aktualizacje (GitHub: wydania programu, baza z gałęzi master) i zgłoszenia (formularz na diamel.pl)
 NAZWA_PROGRAMU = "kalkulator_rozruchu"
 GITHUB_REPO = "Kuj0n/Diamel-Kalkulator-Rozruchu"
+URL_BAZY = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/data/"
 URL_ZGLOSZEN = "https://diamel.pl/api/zgloszenie.php"
 
 def sciezka_do_zasobu(relatywna_sciezka):

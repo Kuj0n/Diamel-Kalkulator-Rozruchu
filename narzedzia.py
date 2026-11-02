@@ -10,7 +10,7 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from konfiguracja_app import VERSION, NAZWA_PROGRAMU, GITHUB_REPO, URL_ZGLOSZEN
+from konfiguracja_app import VERSION, NAZWA_PROGRAMU, GITHUB_REPO, URL_BAZY, URL_ZGLOSZEN
 
 NAGLOWKI = {'User-Agent': f'Diamel-{NAZWA_PROGRAMU}/{VERSION}'}
 
@@ -95,16 +95,14 @@ def pobierz_i_zainstaluj(root, link):
 def sprawdz_aktualizacje_bazy(root, controller, tryb="recznie"):
     def task():
         try:
-            _, zalaczniki = pobierz_wydanie()
-            if "wersja.json" not in zalaczniki:
-                raise Exception("Najnowsze wydanie nie zawiera informacji o bazie danych.")
-            dane = pobierz_json(zalaczniki["wersja.json"], timeout=10.0)
-            wersja_bazy_serwera = dane.get("wersja_bazy", "0.0.0")
-            changelog_bazy = dane.get("changelog_bazy", "Brak informacji.")
+            # Baza to pliki data/*.json w repozytorium - wersja i historia zmian w data/wersja_bazy.json
+            dane = pobierz_json(URL_BAZY + "wersja_bazy.json")
+            wersja_bazy_serwera = dane.get("version", "0.0.0")
+            changelog_bazy = (dane.get("changelog") or "Brak informacji.").strip().split("\n\n")[0]
             wersja_lokalna = controller.db_model.wersja_bazy
 
             if wez_krotke(wersja_bazy_serwera) > wez_krotke(wersja_lokalna):
-                root.after(0, lambda: pokaz_monit_bazy(root, controller, wersja_bazy_serwera, changelog_bazy, zalaczniki))
+                root.after(0, lambda: pokaz_monit_bazy(root, controller, wersja_bazy_serwera, changelog_bazy))
             elif tryb == "recznie":
                 msg = f"Posiadasz najnowszą bazę danych!\n\nTwoja wersja: {wersja_lokalna}\nWersja na serwerze: {wersja_bazy_serwera}"
                 root.after(0, lambda: messagebox.showinfo("Aktualizacje Bazy", msg, parent=root))
@@ -113,20 +111,17 @@ def sprawdz_aktualizacje_bazy(root, controller, tryb="recznie"):
                 root.after(0, lambda: messagebox.showerror("Błąd połączenia", f"Nie udało się połączyć z serwerem.\nSzczegóły: {e}", parent=root))
     threading.Thread(target=task, daemon=True).start()
 
-def pokaz_monit_bazy(root, controller, nowa_wersja, changelog, zalaczniki):
+def pokaz_monit_bazy(root, controller, nowa_wersja, changelog):
     odp = messagebox.askyesno("Nowa wersja Bazy Danych!", f"Wydano nową bazę danych: {nowa_wersja} (Twoja: {controller.db_model.wersja_bazy})\n\nZMIANY W BAZIE:\n{changelog}\n\nCzy chcesz pobrać i scalić nową bazę z Twoimi danymi?", parent=root)
     if odp:
         chce_kopie = messagebox.askyesno("Kopia zapasowa", "Zanim zaktualizuję dane, czy chcesz utworzyć kopię zapasową swojej obecnej bazy danych?", parent=root)
-        pobierz_i_scal_baze(root, controller, chce_kopie, nowa_wersja, zalaczniki)
+        pobierz_i_scal_baze(root, controller, chce_kopie, nowa_wersja)
 
-def pobierz_i_scal_baze(root, controller, zrob_kopie, nowa_wersja, zalaczniki):
+def pobierz_i_scal_baze(root, controller, zrob_kopie, nowa_wersja):
     def task():
         try:
-            nowe_starters, nowe_batteries = {}, {}
-            if "starters.json" in zalaczniki:
-                nowe_starters = pobierz_json(zalaczniki["starters.json"], timeout=10.0).get("starters", {})
-            if "batteries.json" in zalaczniki:
-                nowe_batteries = pobierz_json(zalaczniki["batteries.json"], timeout=10.0).get("batteries", {})
+            nowe_starters = pobierz_json(URL_BAZY + "starters.json", timeout=10.0).get("starters", {})
+            nowe_batteries = pobierz_json(URL_BAZY + "batteries.json", timeout=10.0).get("batteries", {})
             if not nowe_starters and not nowe_batteries:
                 raise Exception("Nie udało się pobrać plików bazy z serwera.")
 

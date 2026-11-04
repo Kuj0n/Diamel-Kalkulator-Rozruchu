@@ -4,11 +4,15 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.2.0"
+VERSION = "2.2.1"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
 BUILD_DATE = "2026-11-04 18:00"
 
 CHANGELOG = """
+v2.2.1 (2026-11-04)
+- Naprawa: Korektor HR uruchomiony przy otwartym Kalkulatorze pokazywał interfejs Kalkulatora (wspólny port okna) -
+  każdy program Diamel ma teraz własny port.
+
 v2.2.0 (2026-11-04)
 - Napięcie na rozruszniku z porównania obwodów (jak w krzywych SAE J544): krzywa rozrusznika jest wyznaczona dla obwodu
   testowego (akumulator + kable) - program liczy rzeczywisty obwód: rezystancja wewnętrzna zestawu akumulatorów

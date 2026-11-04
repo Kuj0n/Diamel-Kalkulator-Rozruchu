@@ -7,6 +7,7 @@ ROZRUCH_DEBUG=1 - narzędzia programisty (F12) w oknie.
 import ctypes
 import json
 import os
+import socket
 import sys
 import threading
 import urllib.request
@@ -18,7 +19,23 @@ from baza import KATALOG_DANYCH
 from konfiguracja_app import VERSION, sciezka_do_zasobu
 
 PLIK_OKNA = os.path.join(KATALOG_DANYCH, "okno.json")
+# Własny port lokalnego serwera okna (pywebview domyślnie używa 42001 we wszystkich programach - Korektor HR uruchomiony
+# przy otwartym Kalkulatorze dostawał jego interfejs). Porty programów Diamel: HR 42011, Kalkulator 42021, Akustyka 42031.
+PORT_OKNA = 42021
 CZEKAJ_NA_OKNO = 25  # sekund - potem awaryjne sprawdzenie aktualizacji bez interfejsu
+
+
+def wolny_port(preferowany):
+    """Port serwera okna: własny programu, a gdy zajęty (drugie okno, inny program) - dowolny wolny, nigdy cudzy serwer."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("127.0.0.1", preferowany))
+            return preferowany
+        except OSError:
+            pass
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
 
 
 def awaryjna_aktualizacja(api):
@@ -74,7 +91,7 @@ def main():
 
     threading.Thread(target=awaryjna_aktualizacja, args=(api,), daemon=True).start()
     okno.events.closing += zamykanie
-    webview.start(debug=os.environ.get("ROZRUCH_DEBUG") == "1", private_mode=False,
+    webview.start(debug=os.environ.get("ROZRUCH_DEBUG") == "1", private_mode=False, http_port=wolny_port(PORT_OKNA),
                   storage_path=os.path.join(KATALOG_DANYCH, "webview"))
 
 

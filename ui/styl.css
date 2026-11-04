@@ -253,6 +253,7 @@ textarea.pole { resize: vertical; min-height: 120px; width: 100%; line-height: 1
 .segment.duzy-seg button.akt { background: color-mix(in srgb, var(--kolor) 22%, var(--surface-2)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kolor) 55%, transparent); }
 .wybor-modelu { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; margin-bottom: 14px; }
 .wybor-modelu .p-pole { margin: 0; }
+.norma-cca { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
 .uwaga-pola { display: flex; gap: 8px; align-items: center; font-size: 0.82rem; color: var(--zolty-tekst); background: var(--zolty-tlo); padding: 7px 11px; border-radius: 10px; margin-top: 12px; }
 .uwaga-pola svg { width: 16px; height: 16px; }
 

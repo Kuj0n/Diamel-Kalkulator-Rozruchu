@@ -170,6 +170,14 @@ def test_cca_silnika():
     assert w["cca_stan"] == "ok"
     w = obliczenia.oblicz({**b, "cca_silnika": "5000"})  # wartość wpisana, ale pole wyboru odznaczone - nie liczy się
     assert w["ok"] and not w["cca_znane"]
+    # norma CCA: różne normy akumulatora i karty silnika - porównanie orientacyjne (bez przeliczania), brak normy - bez ostrzeżenia
+    z = {**b, "cca_znane": "1", "cca_silnika": "2000"}
+    w = obliczenia.oblicz({**z, "batt_cca_norma": "en", "cca_silnika_norma": "SAE"})
+    assert w["batt_cca_norma"] == "EN" and w["cca_silnika_norma"] == "SAE" and w["cca_normy_rozne"] and w["cca_stan"] == "ok"
+    assert not obliczenia.oblicz({**z, "batt_cca_norma": "SAE", "cca_silnika_norma": "SAE"})["cca_normy_rozne"]
+    assert not obliczenia.oblicz({**z, "batt_cca_norma": "EN"})["cca_normy_rozne"]
+    assert not obliczenia.oblicz({**b, "batt_cca_norma": "EN", "cca_silnika_norma": "SAE"})["cca_normy_rozne"]  # bez wymagania silnika
+    assert obliczenia.oblicz({**z, "batt_cca_norma": "DIN"})["batt_cca_norma"] == ""
 
 
 def test_metoda_karty():

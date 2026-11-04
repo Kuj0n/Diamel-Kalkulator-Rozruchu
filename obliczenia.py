@@ -12,6 +12,7 @@ NIEEFEKTYWNOSC = {"Lead-Acid": 1.4}  # pozostałe technologie (AGM, Li-Ion): 1.2
 NIEEFEKTYWNOSC_INNE = 1.2
 KROK_LADOWARKI_A = 5             # zalecana ładowarka: wyliczony prąd zaokrąglony w górę do pełnych 5 A
 CCA_TOLERANCJA_PROC = 10        # niedobór CCA względem karty silnika do 10 % - w tolerancji (nie dyskwalifikuje)
+NORMY_CCA = ("EN", "SAE")      # EN 50342-1 (10 s, 7,5 V) i SAE J537 (30 s, 7,2 V) - wartości zbliżone, ale nie wprost porównywalne
 ZAPAS_MIN_A = 1                  # gdy do pełnych 5 A brakuje mniej - zakres (np. 14,6 A -> 15-20 A)
 
 
@@ -73,6 +74,12 @@ POLA = {
     "batt_rint_mohm": ("Rezystancja wewnętrzna akumulatora", False, False),
 }
 NIEWYMAGANE_PUSTE = {"starter_normal", "min_v", "zmiana_co", "cca_silnika", "r_test_mohm", "batt_rint_mohm"}  # puste = brak danych (nie liczone / nie sprawdzane)
+
+
+def norma_cca(v):
+    """Norma, wg której podano CCA: "EN", "SAE" albo "" (nie podano)."""
+    v = str(v or "").strip().upper()
+    return v if v in NORMY_CCA else ""
 
 
 def oblicz(stan):
@@ -182,6 +189,10 @@ def oblicz(stan):
         "cca_stan": ("ok" if cca_dostepne >= d["cca_silnika"] else "tolerancja" if (d["cca_silnika"] - cca_dostepne) <= d["cca_silnika"] * tolerancja / 100 else "zle")
                     if cca_znane else None,
         "szczyt_pokryty": cca_dostepne >= cca_wymagane,
+        # normy CCA akumulatora i karty silnika: różne - porównanie orientacyjne (bez przeliczania - brak jednoznacznego współczynnika)
+        "batt_cca_norma": norma_cca(stan.get("batt_cca_norma")),
+        "cca_silnika_norma": norma_cca(stan.get("cca_silnika_norma")),
+        "cca_normy_rozne": cca_znane and "" != norma_cca(stan.get("batt_cca_norma")) != norma_cca(stan.get("cca_silnika_norma")) != "",
         "total_ah_available": ah_dostepne,
         "prad_rozruchu": prad_rozruchu,
         "czas_calkowity": czas_calkowity,

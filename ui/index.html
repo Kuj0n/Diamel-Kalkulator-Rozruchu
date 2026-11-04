@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Kalkulator Rozruchu</title>
-<link rel="stylesheet" href="styl.css">
+<script>document.write('<link rel="stylesheet" href="styl.css?v=' + encodeURIComponent(new URLSearchParams(location.search).get('v') || '') + '">')</script>
 </head>
 <body>
 
@@ -41,6 +41,6 @@
 <div class="powiadomienia" id="powiadomienia"></div>
 <div id="modal-miejsce"></div>
 
-<script src="app.js"></script>
+<script>document.write('<script src="app.js?v=' + encodeURIComponent(new URLSearchParams(location.search).get('v') || '') + '"><\/script>')</script>
 </body>
 </html>

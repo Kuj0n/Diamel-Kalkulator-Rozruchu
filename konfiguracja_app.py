@@ -4,11 +4,16 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.2.1"
+VERSION = "2.2.2"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
-BUILD_DATE = "2026-11-04 18:00"
+BUILD_DATE = "2026-11-04 23:00"
 
 CHANGELOG = """
+v2.2.2 (2026-11-04)
+- Norma CCA (EN 50342-1 / SAE J537) przy akumulatorze i przy wymaganiu z karty silnika (także w bazie). Gdy normy
+  są różne, program i raport ostrzegają, że porównanie jest orientacyjne.
+- Okno zawsze wczytuje aktualny interfejs: po aktualizacji nie zostaje stary wygląd z pamięci podręcznej okna.
+
 v2.2.1 (2026-11-04)
 - Naprawa: Korektor HR uruchomiony przy otwartym Kalkulatorze pokazywał interfejs Kalkulatora (wspólny port okna) -
   każdy program Diamel ma teraz własny port.

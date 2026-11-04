@@ -80,6 +80,7 @@ TEKSTY = {
         "k_cca_tol": "wymagane {c} A · w tolerancji",
         "cca_silnik_tol": "CCA zestawu jest o {z} A ({p} %) niższe niż wymaganie producenta silnika ({c} A) - niedobór mieści się w przyjętej tolerancji {t} % i nie dyskwalifikuje akumulatorów.",
         "cca_ok": "CCA zestawu pokrywa szczytowy prąd wszystkich rozruszników.",
+        "cca_normy": "CCA akumulatorów podano wg normy {a}, a wymaganie producenta silnika wg {s}. Metody badania obu norm różnią się (EN 50342-1: 10 s do 7,5 V, SAE J537: 30 s do 7,2 V), więc porównanie ma charakter orientacyjny - zaleca się potwierdzenie CCA akumulatora wg normy {s} u producenta.",
         "cca_info": "Informacyjnie: szczytowy prąd wszystkich rozruszników przekracza CCA zestawu. Prąd szczytowy występuje tylko przez krótką chwilę przy załączeniu rozrusznika i nie dyskwalifikuje akumulatorów.",
         "prad_rozr": "Prąd rozruchu (wszystkie rozruszniki)", "czas_rozr": "Łączny czas kręcenia", "zuzycie": "Zużycie pojemności",
         "pojemnosc": "Pojemność zestawu", "udzial": "Udział zużycia w pojemności", "krotnosc": "Zestaw jest {k}× większy niż zużycie w najgorszym scenariuszu (prąd szczytowy przez cały czas prób).",
@@ -154,6 +155,7 @@ TEKSTY = {
         "k_cca_tol": "required {c} A · within tolerance",
         "cca_silnik_tol": "The battery set CCA is {z} A ({p} %) lower than the engine manufacturer's requirement ({c} A) - the shortfall is within the accepted {t} % tolerance and does not disqualify the batteries.",
         "cca_ok": "The battery set CCA covers the peak current of all starter motors.",
+        "cca_normy": "The battery CCA is rated to {a}, while the engine manufacturer's requirement is given to {s}. The test methods of the two standards differ (EN 50342-1: 10 s to 7.5 V, SAE J537: 30 s to 7.2 V), so the comparison is indicative only - it is recommended to confirm the battery CCA to {s} with the manufacturer.",
         "cca_info": "For information: the peak current of all starter motors exceeds the battery set CCA. The peak current occurs only for a short moment at starter engagement and does not disqualify the batteries.",
         "prad_rozr": "Cranking current (all starter motors)", "czas_rozr": "Total cranking time", "zuzycie": "Capacity consumed",
         "pojemnosc": "Battery set capacity", "udzial": "Share of capacity used", "krotnosc": "The battery set is {k}× larger than the consumption in the worst-case scenario (peak current for the whole cranking time).",
@@ -579,7 +581,7 @@ class Raport:
                                   (t["prad_znam"], f"{n.g(w['starter_normal'])} A" if w["starter_normal"] else t["brak"]), (t["prad_szczyt"], f"{n.g(w['starter_peak'])} A"),
                                   (t["nap_krec"], f"{n(w['crank_v'])} V"), (t["nap_min"], f"{n(w['min_v'])} V" if w["min_v"] else t["brak"])]),
             (t["g_akumulatory"], [(t["model"], model_b), (t["technologia"], TYPY[self.jezyk].get(w["batt_type"], w["batt_type"])),
-                                   (t["nap_akumulatora"], f"{n.g(w['batt_v'])} V / {n.g(w['batt_ah'])} Ah / {n.g(w['batt_cca'])} A"),
+                                   (t["nap_akumulatora"], f"{n.g(w['batt_v'])} V / {n.g(w['batt_ah'])} Ah / {n.g(w['batt_cca'])} A" + (f" ({w['batt_cca_norma']})" if w["batt_cca_norma"] else "")),
                                    (t["polaczenie"], t["polaczenie_w"].format(s=w["batt_series"], p=w["batt_parallel"], n=w["batt_series"] * w["batt_parallel"])),
                                    (t["zestaw"], (f"{n.g(w['napiecie_banku'])} V / {n.g(w['total_ah_available'])} Ah / {n.g(w['total_cca_available'])} A",))]),
             (t["g_kable"], [(t["dlugosc"], f"{n.g(w['cable_l'])} m"), (t["przekroj"], t["przekroj_w"].format(n=w["cable_cores"], a=n.g(w["cable_a"])))]),
@@ -665,9 +667,10 @@ class Raport:
         t, w, n = self.t, self.w, self.n
         self.opis(t["o_cca"])
         self.rysunek_zestawu()
-        cca = [(t["cca_dost"], f"{w['batt_parallel']} × {n.g(w['batt_cca'])} A", (f"{n.g(w['total_cca_available'])} A",))]
+        norma = lambda k: f" ({w[k]})" if w[k] else ""
+        cca = [(t["cca_dost"], f"{w['batt_parallel']} × {n.g(w['batt_cca'])} A{norma('batt_cca_norma')}", (f"{n.g(w['total_cca_available'])} A",))]
         if w["cca_znane"]:
-            cca.append((t["cca_silnik"], t["cca_silnik_obl"].format(e=self.stan.get("engine", "")).strip(), (f"{n.g(w['cca_silnika'])} A",)))
+            cca.append((t["cca_silnik"], t["cca_silnik_obl"].format(e=self.stan.get("engine", "")).strip() + norma("cca_silnika_norma"), (f"{n.g(w['cca_silnika'])} A",)))
         cca.append((t["cca_wym"], f"{w['starter_qty']} × {n.g(w['starter_peak'])} A", f"{n.g(w['cca_wymagane'])} A"))
         self.tabela_wartosci([(None, cca)], [t["wielkosc"], t["obliczenie"], t["wynik"]], [2.05, 2.0, 0.8])
         if w["cca_znane"]:
@@ -676,6 +679,8 @@ class Raport:
                 self.ocena("info", t["cca_silnik_tol"].format(c=n.g(w["cca_silnika"]), z=n.g(zapas), p=n(w["cca_niedobor_proc"], 1), t=n.g(w["cca_tolerancja"])))
             else:
                 self.ocena(w["cca_ok"], (t["cca_silnik_ok"] if w["cca_ok"] else t["cca_silnik_zle"]).format(c=n.g(w["cca_silnika"]), z=n.g(zapas)))
+            if w["cca_normy_rozne"]:
+                self.ocena("info", t["cca_normy"].format(a=w["batt_cca_norma"], s=w["cca_silnika_norma"]))
             self.akapit(t["cca_szczyt_info"].format(s=n.g(w["cca_wymagane"])), 8.5, kolor=SZARY, po=4)
         else:
             self.ocena(True if w["cca_ok"] else "info", t["cca_ok"] if w["cca_ok"] else t["cca_info"])

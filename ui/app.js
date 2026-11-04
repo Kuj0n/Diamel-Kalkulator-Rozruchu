@@ -383,7 +383,8 @@ function rysujObliczenia() {
           <input class="pole" id="f-engine" data-pole="engine" list="lista-silnikow" value="${esc(P.engine)}" spellcheck="false" placeholder="${Object.keys(BAZA.engines || {}).length ? 'wybierz z bazy albo wpisz' : 'np. QSK78-G39'}">
           <datalist id="lista-silnikow">${Object.keys(BAZA.engines || {}).sort((a, b) => a.localeCompare(b, 'pl')).map((n) => `<option value="${esc(n)}">${esc(BAZA.engines[n].genset || '')}</option>`).join('')}</datalist></div>
         <div class="p-pole cca-silnika"><label class="zaznacz" style="margin-bottom:6px"><input type="checkbox" id="f-cca-znane" ${P.cca_znane ? 'checked' : ''}> CCA silnika znane z karty katalogowej</label>
-          ${P.cca_znane ? `<div class="z-jednostka"><input class="pole" id="f-cca_silnika" data-pole="cca_silnika" value="${esc(P.cca_silnika)}" inputmode="decimal" placeholder="wymagane CCA, np. 2000"><span class="jedn">A</span></div><div class="blad-pola ukryty" data-blad="cca_silnika"></div>`
+          ${P.cca_znane ? `<div class="z-jednostka"><input class="pole" id="f-cca_silnika" data-pole="cca_silnika" value="${esc(P.cca_silnika)}" inputmode="decimal" placeholder="wymagane CCA, np. 2000"><span class="jedn">A</span></div><div class="blad-pola ukryty" data-blad="cca_silnika"></div>
+            <div class="norma-cca"><span class="podp">norma:</span>${pSegment('cca_silnika_norma', [['EN', 'EN'], ['SAE', 'SAE']])}</div>`
             : '<span class="podp">bez wymagania - CCA oceniane tylko informacyjnie</span>'}</div>
       </div>
       <details class="sekcja" id="sekcja-rewizje"><summary>${ik('dalej')} Tabela rewizji dokumentu <span class="podp">(${P.revisions.length})</span></summary><div id="rewizje"></div></details>
@@ -408,7 +409,9 @@ function rysujObliczenia() {
         ${pLiczba('batt_ah', 'Pojemność 1 szt.', 'Ah')}${pLiczba('batt_cca', 'Prąd CCA 1 szt.', 'A')}
         ${pLiczba('batt_series', 'Szeregowo', 'szt.')}${pLiczba('batt_parallel', 'Łańcuchy równoległe', 'szt.')}
         ${pLiczba('batt_rint_mohm', 'Rezystancja wewn. 1 szt.', 'mΩ', { podpowiedz: 'z karty, np. 2,5' })}
+        <div class="p-pole"><label class="etykieta">Norma CCA</label>${pSegment('batt_cca_norma', [['EN', 'EN'], ['SAE', 'SAE']])}</div>
       </div>
+      ${P.cca_znane && P.batt_cca_norma && P.cca_silnika_norma && P.batt_cca_norma !== P.cca_silnika_norma ? `<div class="uwaga-pola">${ik('uwaga')} CCA akumulatora podano wg ${P.batt_cca_norma}, a wymaganie silnika wg ${P.cca_silnika_norma} - wartości wg różnych norm nie są wprost porównywalne (porównanie orientacyjne). Jeśli karta akumulatora podaje CCA wg ${P.cca_silnika_norma}, wpisz tę wartość.</div>` : ''}
       <div id="bank"></div>
       <div class="redundancja">
         <div class="p-pole"><label class="etykieta">Redundancja rozruchu</label>${pSegment('zestawy', [['1', '1 zestaw'], ['2', '2 zestawy (przełączane)']])}</div>
@@ -474,7 +477,7 @@ widokObl.addEventListener('click', (e) => {
     if (pole === 'system_v') zmienNapiecieUkladu(+b.dataset.v);
     else P[pole] = b.dataset.v;
     zmiana();
-    if (pole === 'system_v' || pole === 'zestawy') { const przew = $('#dane').scrollTop; rysujObliczenia(); $('#dane').scrollTop = przew; return; }
+    if (['system_v', 'zestawy', 'batt_cca_norma', 'cca_silnika_norma'].includes(pole)) { const przew = $('#dane').scrollTop; rysujObliczenia(); $('#dane').scrollTop = przew; return; }
     $$('button', b.parentElement).forEach((x) => x.classList.toggle('akt', x === b));
     przeliczPozniej(0);
   }
@@ -510,7 +513,7 @@ function zastosujModel(rodzaj, nazwa) {
     if (u.curve_path) P.images.curve = u.curve_path;
     if (u.pliki?.obraz) plikDoZalacznika(u.pliki.obraz.id, 'curve');
   } else if (rodzaj === 'batteries') {
-    Object.assign(P, { batt_type: u.type || P.batt_type, batt_v: t(u.voltage_v) || '12', batt_ah: t(u.capacity_ah), batt_cca: t(u.cca_a),
+    Object.assign(P, { batt_type: u.type || P.batt_type, batt_v: t(u.voltage_v) || '12', batt_ah: t(u.capacity_ah), batt_cca: t(u.cca_a), batt_cca_norma: u.cca_norma || '',
       batt_rint_mohm: +u.internal_res_ohm > 0 ? String(Math.round(u.internal_res_ohm * 1e5) / 100) : '' });
     if (u.batt_path) P.images.batt = u.batt_path;
     if (u.pliki?.obraz) plikDoZalacznika(u.pliki.obraz.id, 'batt');
@@ -520,7 +523,7 @@ function zastosujModel(rodzaj, nazwa) {
     if (u.genset && !P.genset) P.genset = u.genset;
     if ([12, 24].includes(+u.voltage_v)) P.system_v = String(u.voltage_v);
     if (+u.starter_qty > 0) P.starter_qty = String(u.starter_qty);
-    if (+u.cca_a > 0) Object.assign(P, { cca_znane: '1', cca_silnika: String(u.cca_a) });
+    if (+u.cca_a > 0) Object.assign(P, { cca_znane: '1', cca_silnika: String(u.cca_a), cca_silnika_norma: u.cca_norma || '' });
     if (u.starter_model && BAZA.starters[u.starter_model]) zastosujModel('starters', u.starter_model);
   }
   return true;
@@ -683,7 +686,7 @@ function rysujWyniki() {
         <div class="szczegol">wyliczone <b>${lp(W.charger_amps)} A</b>, w górę do pełnych 5 A · ładowanie ${lc(W.charge_h)} h, współczynnik ${lc(W.inefficiency)}</div></div>
       ${W.cca_znane ? `<div class="wynik"><div class="gora-wyniku"><div class="tytul-wyniku">${ik('piorun')}CCA</div>${W.cca_stan === 'tolerancja' ? `<span class="status info">${ik('info')}w tolerancji (−${lp(W.cca_niedobor_proc, 1)}%)</span>` : status(W.cca_ok, `min. ${lc(W.cca_silnika)} A`, `brakuje ${lc(W.cca_silnika - W.total_cca_available)} A`)}</div>
         <div class="wartosc">${lc(W.total_cca_available)}<small>A</small></div>
-        <div class="szczegol">wymagane wg producenta silnika <b>${lc(W.cca_silnika)} A</b>${W.cca_stan === 'tolerancja' ? ` - brakuje ${lc(W.cca_silnika - W.total_cca_available)} A, w tolerancji ${lc(W.cca_tolerancja)}%` : ''} · szczyt rozruszników ${lc(W.cca_wymagane)} A (informacyjnie)</div></div>`
+        <div class="szczegol">wymagane wg producenta silnika <b>${lc(W.cca_silnika)} A</b>${W.cca_silnika_norma ? ` (${W.cca_silnika_norma})` : ''}${W.cca_normy_rozne ? `, akumulatory wg ${W.batt_cca_norma} - <b>porównanie orientacyjne</b>` : ''}${W.cca_stan === 'tolerancja' ? ` - brakuje ${lc(W.cca_silnika - W.total_cca_available)} A, w tolerancji ${lc(W.cca_tolerancja)}%` : ''} · szczyt rozruszników ${lc(W.cca_wymagane)} A (informacyjnie)</div></div>`
       : `<div class="wynik"><div class="gora-wyniku"><div class="tytul-wyniku">${ik('piorun')}CCA</div>${status(W.cca_ok, 'pokryte', 'informacyjnie', true)}</div>
         <div class="wartosc">${lc(W.total_cca_available)}<small>A</small></div>
         <div class="szczegol">szczyt wszystkich rozruszników <b>${lc(W.cca_wymagane)} A</b> - prąd chwilowy, nie dyskwalifikuje. Znasz CCA z karty silnika? Zaznacz w karcie Projekt.</div></div>`}
@@ -804,6 +807,7 @@ function rysujEdytor() {
         <label class="etykieta" for="e-nazwa">Nazwa modelu</label><input class="pole" id="e-nazwa" value="${esc(nowy ? '' : baza.wybrany)}"></div>
       ${pola.map(([k, opis, jedn, liczbowe]) => (k === 'type'
         ? `<div class="p-pole"><label class="etykieta">${opis}</label><select class="pole" data-e="${k}">${['Lead-Acid', 'AGM', 'Li-Ion'].map((t) => `<option ${wartosc(k) === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`
+        : k === 'cca_norma' ? `<div class="p-pole"><label class="etykieta">${opis}</label><select class="pole" data-e="${k}">${[['', '— nie podano'], ['EN', 'EN 50342-1'], ['SAE', 'SAE J537']].map(([v, t]) => `<option value="${v}" ${wartosc(k) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>`
         : liczbowe ? `<div class="p-pole"><label class="etykieta">${opis}</label><div class="z-jednostka"><input class="pole" data-e="${k}" value="${esc(wartosc(k) === 0 ? '' : wartosc(k))}" inputmode="decimal"><span class="jedn">${jedn}</span></div></div>`
           : k.endsWith('_path') ? `<div class="p-pole szer2"><label class="etykieta">${opis}</label><div style="display:flex;gap:8px"><input class="pole" data-e="${k}" value="${esc(wartosc(k))}" style="flex:1"><button class="btn btn-maly" data-e-wybierz="${k}">Wybierz…</button></div></div>`
             : `<div class="p-pole"><label class="etykieta">${opis}</label><input class="pole" data-e="${k}" value="${esc(wartosc(k))}"></div>`)).join('')}

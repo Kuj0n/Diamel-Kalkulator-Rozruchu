@@ -41,6 +41,7 @@ POLA_URZADZEN = {
         ("voltage_v", "Napięcie", "V", True),
         ("capacity_ah", "Pojemność", "Ah", True),
         ("cca_a", "Prąd rozruchowy CCA", "A", True),
+        ("cca_norma", "Norma CCA (EN / SAE)", "", False),
         ("mca_a", "Prąd MCA", "A", True),
         ("internal_res_ohm", "Rezystancja wewnętrzna", "Ω", True),
         ("ocv_v", "Napięcie spoczynkowe", "V", True),
@@ -56,6 +57,7 @@ POLA_URZADZEN = {
         ("starter_qty", "Liczba rozruszników", "szt.", True),
         ("starter_model", "Rozrusznik (nazwa z bazy rozruszników)", "", False),
         ("cca_a", "Wymagane CCA (karta silnika)", "A", True),
+        ("cca_norma", "Norma CCA (EN / SAE)", "", False),
         ("notes", "Uwagi", "", False),
     ],
 }

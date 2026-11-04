@@ -395,9 +395,10 @@ function rysujObliczenia() {
       <div class="pola p4">
         ${pLiczba('starter_normal', 'Prąd znamionowy', 'A', { podpowiedz: 'opcjonalnie' })}${pLiczba('starter_peak', 'Prąd szczytowy', 'A')}
         ${pLiczba('crank_v', 'Napięcie kręcenia', 'V')}${pLiczba('min_v', 'Napięcie minimalne', 'V', { podpowiedz: 'opcjonalnie' })}
+        ${pLiczba('r_test_mohm', 'Rezystancja obwodu wg karty', 'mΩ', { podpowiedz: 'np. 8 (akum. + kable)' })}
       </div>
       ${(() => { const u = BAZA.starters[P.starter_model]; return u && +u.voltage_v && +u.voltage_v !== +P.system_v ? `<div class="uwaga-pola">${ik('uwaga')} Rozrusznik z bazy ma napięcie ${lc(u.voltage_v)} V, a układ ${P.system_v} V - wybierz rozrusznik ${P.system_v} V albo wpisz jego parametry.</div>` : ''; })()}
-      <p class="podp" style="margin:10px 0 0">Napięcie kręcenia = napięcie akumulatorów podczas rozruchu (z karty rozrusznika; typowo 2/3 napięcia układu). Napięcie minimalne = najniższe, przy którym rozrusznik jeszcze kręci.</p>
+      <p class="podp" style="margin:10px 0 0">Napięcie kręcenia i minimalne - z krzywej rozrusznika (przy prądzie znamionowym i szczytowym). Rezystancja obwodu wg karty - obwód testowy (akumulator + kable), dla którego producent wyznaczył krzywą; z rezystancją akumulatora program porównuje go z Twoim obwodem.</p>
     </div>
 
     <div class="karta">
@@ -406,6 +407,7 @@ function rysujObliczenia() {
       <div class="pola p4">
         ${pLiczba('batt_ah', 'Pojemność 1 szt.', 'Ah')}${pLiczba('batt_cca', 'Prąd CCA 1 szt.', 'A')}
         ${pLiczba('batt_series', 'Szeregowo', 'szt.')}${pLiczba('batt_parallel', 'Łańcuchy równoległe', 'szt.')}
+        ${pLiczba('batt_rint_mohm', 'Rezystancja wewn. 1 szt.', 'mΩ', { podpowiedz: 'z karty, np. 2,5' })}
       </div>
       <div id="bank"></div>
       <div class="redundancja">
@@ -503,11 +505,13 @@ function zastosujModel(rodzaj, nazwa) {
   if (rodzaj === 'starters') {
     if ([12, 24].includes(+u.voltage_v)) P.system_v = String(u.voltage_v);
     Object.assign(P, { starter_normal: t(u.normal_current_a), starter_peak: t(u.peak_current_a),
-      crank_v: t(u.crank_voltage_v) || String(domyslneKrecenie(+P.system_v)), min_v: t(u.min_voltage_v) });
+      crank_v: t(u.crank_voltage_v) || String(domyslneKrecenie(+P.system_v)), min_v: t(u.min_voltage_v),
+      r_test_mohm: +u.test_res_ohm > 0 ? String(Math.round(u.test_res_ohm * 1e5) / 100) : '' });
     if (u.curve_path) P.images.curve = u.curve_path;
     if (u.pliki?.obraz) plikDoZalacznika(u.pliki.obraz.id, 'curve');
   } else if (rodzaj === 'batteries') {
-    Object.assign(P, { batt_type: u.type || P.batt_type, batt_v: t(u.voltage_v) || '12', batt_ah: t(u.capacity_ah), batt_cca: t(u.cca_a) });
+    Object.assign(P, { batt_type: u.type || P.batt_type, batt_v: t(u.voltage_v) || '12', batt_ah: t(u.capacity_ah), batt_cca: t(u.cca_a),
+      batt_rint_mohm: +u.internal_res_ohm > 0 ? String(Math.round(u.internal_res_ohm * 1e5) / 100) : '' });
     if (u.batt_path) P.images.batt = u.batt_path;
     if (u.pliki?.obraz) plikDoZalacznika(u.pliki.obraz.id, 'batt');
     const n = +P.system_v / +P.batt_v;
@@ -659,7 +663,9 @@ function rysujWyniki() {
       <div class="gora-wyniku"><div><div class="tytul-wyniku">${ik('piorun')}Napięcie na rozruszniku</div>
         <div class="wartosc">${lp(W.sustained_voltage)}<small>V</small></div></div>
         ${status(W.napiecie_ok, `min. ${lp(W.min_v, 1)} V`, `poniżej min. ${lp(W.min_v, 1)} V`)}</div>
-      <div class="szczegol">przy prądzie szczytowym: <b>${lp(W.crank_v)} V</b> − spadek na kablu <b>${lp(W.v_drop)} V</b>${W.sustained_normal !== null ? ` · przy znamionowym: <b>${lp(W.sustained_normal)} V</b>` : ''}</div>
+      <div class="szczegol">${W.metoda === 'karta'
+        ? `przy prądzie szczytowym w Twoim obwodzie <b>${lp(W.r_obw * 1000)} mΩ</b> (karta: ${lp(W.r_test * 1000)} mΩ)${W.sustained_normal !== null ? ` · przy znamionowym: <b>${lp(W.sustained_normal)} V</b>` : ''}`
+        : `metoda uproszczona: ${lp(W.crank_v)} V − spadek na kablu <b>${lp(W.v_drop)} V</b>${W.sustained_normal !== null ? ` · przy znamionowym: <b>${lp(W.sustained_normal)} V</b>` : ''}<br><span style="color:var(--zolty-tekst)">Wpisz rezystancję obwodu z karty i rezystancję akumulatora, aby porównać obwody (wynik dokładniejszy).</span>`}</div>
       ${wykres()}
     </div>
 
@@ -688,7 +694,8 @@ function rysujWyniki() {
       Do zamówienia: <b>${W.akumulatory_razem} akumulatorów</b> (${W.zestawy} × ${W.akumulatory_zestaw}) i <b>${W.zestawy} ładowarki</b> po ${W.ladowarka_do ? `${W.ladowarka_od}–${W.ladowarka_do}` : `około ${W.ladowarka_od}`} A</div></div>` : ''}
 
     <div class="wynik"><div class="tytul-wyniku">${ik('kabel')}Okablowanie</div>
-      <div class="szczegol" style="margin-top:6px">Rezystancja linii <b>${lp(W.res * 1000, 3)} mΩ</b> (${W.cable_cores} × ${lc(W.cable_a)} mm², ${lc(W.cable_l)} m)<br>
+      <div class="szczegol" style="margin-top:6px">Rezystancja kabli <b>${lp(W.res * 1000, 3)} mΩ</b> (${W.cable_cores} × ${lc(W.cable_a)} mm², ${lc(W.cable_l)} m)<br>
+      ${W.metoda === 'karta' ? `Zestaw akumulatorów <b>${lp(W.r_zestawu * 1000, 3)} mΩ</b> (${W.batt_series} × ${lc(W.batt_rint_mohm)} / ${W.batt_parallel})${W.starter_qty > 1 ? ` × ${W.starter_qty} rozruszniki` : ''} → obwód <b>${lp(W.r_obw * 1000, 3)} mΩ</b> ${W.r_obw <= W.r_test ? '≤' : '>'} ${lp(W.r_test * 1000, 2)} mΩ z karty<br>` : ''}
       Spadek: <b>${lp(W.v_drop)} V</b> przy ${lc(W.starter_peak)} A${W.starter_normal ? ` · <b>${lp(W.v_drop_normal)} V</b> przy ${lc(W.starter_normal)} A` : ''}
       ${W.prad_graniczny ? `<br>Napięcie minimalne zostanie osiągnięte przy <b>${lc(Math.round(W.prad_graniczny))} A</b>` : W.prad_graniczny === 0 ? '<br><b style="color:var(--czerwony-tekst)">Napięcie kręcenia jest niższe niż minimalne rozrusznika.</b>' : ''}</div></div>`;
 }
@@ -697,7 +704,8 @@ function rysujWyniki() {
 function wykres() {
   const k = W.krzywa, szer = 330, wys = 150, l = 34, pr = 8, g = 10, d = 24;
   const iMax = k.at(-1).i || 1;
-  const uMin = Math.min(W.min_v || Infinity, k.at(-1).u), uMaks = W.crank_v;
+  const kk = W.krzywa_karty;
+  const uMin = Math.min(W.min_v || Infinity, k.at(-1).u, kk ? kk.at(-1).u : Infinity), uMaks = W.u0;
   const dol = Math.max(0, Math.floor(uMin - 1)), gora = Math.ceil(Math.max(uMaks, W.min_v || 0) + 0.5);
   const x = (i) => l + (i / iMax) * (szer - l - pr), y = (u) => g + (1 - (u - dol) / (gora - dol || 1)) * (wys - g - d);
   const sciezka = k.map((p, i) => `${i ? 'L' : 'M'}${x(p.i).toFixed(1)},${y(p.u).toFixed(1)}`).join('');
@@ -705,20 +713,22 @@ function wykres() {
   const siatkaU = []; for (let u = Math.ceil(dol / krokU) * krokU; u <= gora; u += krokU) siatkaU.push(u);
   const krokI = iMax > 2500 ? 1000 : 500;
   const siatkaI = []; for (let i = 0; i <= iMax; i += krokI) siatkaI.push(i);
-  const punkt = (i, kl, r = 4.5) => `<circle class="${kl}" cx="${x(i).toFixed(1)}" cy="${y(W.crank_v - i * W.res).toFixed(1)}" r="${r}"/>`;
+  const punkt = (i, kl, r = 4.5) => `<circle class="${kl}" cx="${x(i).toFixed(1)}" cy="${y(W.u0 - i * W.r_obw).toFixed(1)}" r="${r}"/>`;
+  const sciezkaKarty = kk ? kk.map((p, i) => `${i ? 'L' : 'M'}${x(p.i).toFixed(1)},${y(p.u).toFixed(1)}`).join('') : '';
   return `<div class="wykres"><svg viewBox="0 0 ${szer} ${wys}" role="img" aria-label="Napięcie na rozruszniku w funkcji prądu">
     <defs><linearGradient id="gradU" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--kolor)" stop-opacity="0.28"/><stop offset="1" stop-color="var(--kolor)" stop-opacity="0"/></linearGradient></defs>
     ${siatkaU.map((u) => `<line class="siatka-w" x1="${l}" x2="${szer - pr}" y1="${y(u)}" y2="${y(u)}"/><text class="opis-w" x="${l - 6}" y="${y(u) + 3}" text-anchor="end">${u} V</text>`).join('')}
     ${siatkaI.map((i) => `<text class="opis-w" x="${x(i)}" y="${wys - 8}" text-anchor="middle">${i ? `${i / 1000} kA` : '0'}</text>`).join('')}
     <line class="os-w" x1="${l}" x2="${szer - pr}" y1="${wys - d}" y2="${wys - d}"/>
     <path class="pod-linia" d="${sciezka}L${x(iMax)},${wys - d}L${x(0)},${wys - d}Z"/>
+    ${kk ? `<path class="linia-karty" d="${sciezkaKarty}"/>` : ''}
     <path class="linia-u" d="${sciezka}"/>
     ${W.min_v ? `<line class="linia-min" x1="${l}" x2="${szer - pr}" y1="${y(W.min_v)}" y2="${y(W.min_v)}"/><text class="opis-min" x="${szer - pr}" y="${y(W.min_v) - 4}" text-anchor="end">min. ${lp(W.min_v, 1)} V</text>` : ''}
     ${W.prad_graniczny && W.prad_graniczny <= iMax ? punkt(W.prad_graniczny, 'pkt-gran', 3.5) : ''}
     ${W.starter_normal ? punkt(W.starter_normal, 'pkt-norm') : ''}
     ${punkt(W.starter_peak, 'pkt-peak', 5)}
   </svg>
-  <div class="legenda">${W.starter_normal ? `<span><i style="background:var(--niebieski)"></i>znamionowy ${lc(W.starter_normal)} A</span>` : ''}<span><i style="background:var(--kolor)"></i>szczytowy ${lc(W.starter_peak)} A</span>${W.prad_graniczny && W.prad_graniczny <= iMax ? `<span><i style="background:var(--czerwony)"></i>granica ${lc(Math.round(W.prad_graniczny))} A</span>` : ''}</div></div>`;
+  <div class="legenda">${W.starter_normal ? `<span><i style="background:var(--niebieski)"></i>znamionowy ${lc(W.starter_normal)} A</span>` : ''}<span><i style="background:var(--kolor)"></i>szczytowy ${lc(W.starter_peak)} A</span>${kk ? '<span><i style="background:var(--muted)"></i>krzywa karty (obwód testowy)</span>' : ''}${W.prad_graniczny && W.prad_graniczny <= iMax ? `<span><i style="background:var(--czerwony)"></i>granica ${lc(Math.round(W.prad_graniczny))} A</span>` : ''}</div></div>`;
 }
 
 async function generujRaport(format = 'pdf') {

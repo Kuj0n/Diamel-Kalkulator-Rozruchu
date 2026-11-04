@@ -4,11 +4,20 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.1.1"
+VERSION = "2.2.0"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
 BUILD_DATE = "2026-11-04 18:00"
 
 CHANGELOG = """
+v2.2.0 (2026-11-04)
+- Napięcie na rozruszniku z porównania obwodów (jak w krzywych SAE J544): krzywa rozrusznika jest wyznaczona dla obwodu
+  testowego (akumulator + kable) - program liczy rzeczywisty obwód: rezystancja wewnętrzna zestawu akumulatorów
+  (z uwzględnieniem kilku rozruszników na jednym zestawie) + kable, i porównuje go z obwodem testowym z karty.
+  Wcześniej spadek na kablach był odejmowany od napięcia z karty, które już go zawiera (wynik zaniżony).
+- Nowe pola: rezystancja obwodu wg karty rozrusznika i rezystancja wewnętrzna akumulatora (wpisywane z bazy).
+  Bez nich - dotychczasowa metoda uproszczona, oznaczona w oknie i w raporcie.
+- Wykres i raport: linia obwodu projektu i krzywa z karty (obwód testowy).
+
 v2.1.1 (2026-11-04)
 - Pliki producentów z bazy (krzywe rozruszników, karty katalogowe) usuwane z komputera po wylogowaniu, wygaśnięciu sesji
   albo odebraniu dostępu - dostępne tylko dla zalogowanych.

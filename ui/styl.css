@@ -387,3 +387,4 @@ details.sekcja[open] > summary svg { transform: rotate(90deg); }
 .lista-zalacznikow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .lista-zalacznikow .znacznik { cursor: default; padding-right: 3px; }
 .lista-zalacznikow .znacznik svg { width: 14px; height: 14px; }
+.wykres .linia-karty { stroke: var(--muted); stroke-width: 1.4; stroke-dasharray: 4 3; fill: none; }

@@ -51,6 +51,7 @@ DOMYSLNE_POLA = {
     "batt_model": "", "batt_type": "Lead-Acid", "batt_v": "12", "batt_ah": "", "batt_cca": "", "batt_series": "2", "batt_parallel": "4",
     "cable_l": "12.5", "cable_a": "95", "cable_cores": "2", "time_s": "10", "attempts": "5", "charge_h": "3",
     "zestawy": "1", "zmiana_co": "",
+    "r_test_mohm": "", "batt_rint_mohm": "",  # rezystancja obwodu testowego z karty rozrusznika, rezystancja wewnętrzna 1 akumulatora
     "cca_znane": "", "cca_silnika": "",  # wymagane CCA z karty katalogowej silnika (pole wyboru + wartość)  # redundancja: liczba jednakowych zestawów (akumulatory + ładowarka), zmiana zestawu co N rozruchów
 }
 

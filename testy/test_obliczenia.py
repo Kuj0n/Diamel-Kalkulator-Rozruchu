@@ -172,6 +172,28 @@ def test_cca_silnika():
     assert w["ok"] and not w["cca_znane"]
 
 
+def test_metoda_karty():
+    """Napięcie na rozruszniku z porównania obwodów: U(I) = U0 - I * R_obw, U0 = U_kręcenia + I_znam * R_test (krzywa karty),
+    R_obw = n * r * s / p + R_kabli. Kryterium U(I_szczyt) >= U_min z karty <=> R_obw <= R_test. Bez danych - metoda uproszczona."""
+    b = dict(system_v="24", crank_v="16", min_v="8", starter_normal="1000", starter_peak="2000", starter_qty="3", batt_v="12", batt_ah="225",
+             batt_cca="1150", batt_series="2", batt_parallel="4", cable_l="12.5", cable_a="95", cable_cores="2", time_s="10", attempts="5",
+             charge_h="3", r_test_mohm="8", batt_rint_mohm="3")
+    w = obliczenia.oblicz(b)
+    rk = 1.68e-8 * 12.5 / (2 * 95e-6)
+    assert w["metoda"] == "karta" and abs(w["u0"] - 24.0) < 1e-9
+    assert abs(w["r_zestawu"] - 0.003 * 2 / 4) < 1e-12 and abs(w["r_obw"] - (3 * 0.0015 + rk)) < 1e-12
+    assert abs(w["sustained_voltage"] - (24 - 2000 * w["r_obw"])) < 1e-9 and abs(w["sustained_normal"] - (24 - 1000 * w["r_obw"])) < 1e-9
+    assert abs(w["prad_graniczny"] - (24 - 8) / w["r_obw"]) < 1e-6 and w["krzywa_karty"][20]["u"] == 8.0  # karta: 8 V przy 2000 A
+    # kryterium napięcia jest równoważne porównaniu rezystancji obwodu z obwodem testowym (min_v z tej samej krzywej)
+    for p_, q_ in (("4", "3"), ("2", "3"), ("1", "1"), ("2", "1")):
+        w = obliczenia.oblicz({**b, "batt_parallel": p_, "starter_qty": q_})
+        assert w["napiecie_ok"] == (w["r_obw"] <= w["r_test"] + 1e-12), (p_, q_)
+    w = obliczenia.oblicz({**b, "batt_rint_mohm": ""})  # brak rezystancji akumulatora - metoda uproszczona (jak w 1.2.0)
+    assert w["metoda"] == "uproszczona" and abs(w["sustained_voltage"] - (16 - 2000 * rk)) < 1e-9 and w["krzywa_karty"] is None
+    w = obliczenia.oblicz({**b, "starter_normal": ""})  # bez prądu znamionowego nie da się wyznaczyć U0 z krzywej
+    assert w["metoda"] == "uproszczona"
+
+
 if __name__ == "__main__":
     n = test_zgodnosc_z_120()
     test_nowe_funkcje()
@@ -180,4 +202,5 @@ if __name__ == "__main__":
     test_projekt_z_wersji_1x()
     test_baza()
     test_cca_silnika()
-    print(f"OK - {n} zestawów danych zgodnych z wersją 1.2.0; ładowarka, redundancja, CCA silnika, projekty 1.x i baza sprawdzone")
+    test_metoda_karty()
+    print(f"OK - {n} zestawów danych zgodnych z wersją 1.2.0; ładowarka, redundancja, CCA silnika, metoda karty, projekty 1.x i baza sprawdzone")

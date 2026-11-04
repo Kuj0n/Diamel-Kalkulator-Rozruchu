@@ -69,8 +69,10 @@ POLA = {
     "zestawy": ("Liczba zestawów (redundancja)", True, True),
     "zmiana_co": ("Zmiana zestawu co ... rozruchów", True, False),
     "cca_silnika": ("Wymagane CCA wg producenta silnika", False, False),
+    "r_test_mohm": ("Rezystancja obwodu testowego z karty rozrusznika", False, False),
+    "batt_rint_mohm": ("Rezystancja wewnętrzna akumulatora", False, False),
 }
-NIEWYMAGANE_PUSTE = {"starter_normal", "min_v", "zmiana_co", "cca_silnika"}  # puste = brak danych (nie liczone / nie sprawdzane)
+NIEWYMAGANE_PUSTE = {"starter_normal", "min_v", "zmiana_co", "cca_silnika", "r_test_mohm", "batt_rint_mohm"}  # puste = brak danych (nie liczone / nie sprawdzane)
 
 
 def oblicz(stan):
@@ -108,15 +110,32 @@ def oblicz(stan):
     peak, normal, ilosc = d["starter_peak"], d["starter_normal"], d["starter_qty"]
     krecenie, minimalne = d["crank_v"], d["min_v"]
 
-    # Spadek napięcia na kablu (na rozrusznik) - liniowo z prądem: U(I) = U_kręcenia - I * R
     res = rezystancja_kabla(d["cable_l"], d["cable_a"], d["cable_cores"])
     v_drop = peak * res
     v_drop_normal = normal * res
-    napiecie_peak = krecenie - v_drop
-    napiecie_normal = krecenie - v_drop_normal if normal else None
-    # prąd, przy którym napięcie na rozruszniku spada do minimalnego (0 = już napięcie kręcenia jest za niskie)
-    prad_graniczny = max(0.0, (krecenie - minimalne) / res) if (minimalne and res > 0) else None
-    krzywa = [{"i": round(peak * k / 20, 1), "u": round(krecenie - peak * k / 20 * res, 3)} for k in range(0, 25)]  # do 120% prądu szczytowego
+    r_test, r_wew = d["r_test_mohm"] / 1000, d["batt_rint_mohm"] / 1000
+    if r_test > 0 and r_wew > 0 and normal > 0:
+        # Metoda karty (SAE J544): krzywa rozrusznika jest wyznaczona dla obwodu testowego o rezystancji R_test
+        # (akumulator + kable) - napięcie kręcenia z karty zawiera już spadek w tym obwodzie. Napięcie na rozruszniku
+        # w rzeczywistym obwodzie: U(I) = U0 - I * R_obw, U0 = U_kręcenia + I_znam * R_test (napięcie bez obciążenia),
+        # R_obw = n * rezystancja wewnętrzna zestawu (szeregowo sumuje się, równolegle dzieli; n rozruszników z jednego
+        # zestawu - przez akumulatory płynie suma prądów) + rezystancja kabli jednego rozrusznika.
+        # Warunek U(I_szczyt) >= U_min z karty jest równoważny R_obw <= R_test.
+        metoda = "karta"
+        u0 = krecenie + normal * r_test
+        r_zestawu = r_wew * d["batt_series"] / d["batt_parallel"]
+        r_obw = ilosc * r_zestawu + res
+    else:
+        # Metoda uproszczona (brak R_test z karty albo rezystancji akumulatora): od napięcia kręcenia z karty odejmowany
+        # jest spadek na kablach - zachowawczo (spadek w obwodzie testowym jest już w napięciu z karty)
+        metoda = "uproszczona"
+        u0, r_zestawu, r_obw = krecenie, None, res
+    napiecie_peak = u0 - peak * r_obw
+    napiecie_normal = u0 - normal * r_obw if normal else None
+    # prąd, przy którym napięcie na rozruszniku spada do minimalnego (0 = już przy zerowym prądzie jest za niskie)
+    prad_graniczny = max(0.0, (u0 - minimalne) / r_obw) if (minimalne and r_obw > 0) else None
+    krzywa = [{"i": round(peak * k / 20, 1), "u": round(u0 - peak * k / 20 * r_obw, 3)} for k in range(0, 25)]  # do 120% prądu szczytowego
+    krzywa_karty = [{"i": p["i"], "u": round(u0 - p["i"] * r_test, 3)} for p in krzywa] if metoda == "karta" else None
 
     # Akumulatory: szeregowo sumuje się napięcie, równolegle - prąd i pojemność
     napiecie_banku = d["batt_v"] * d["batt_series"]
@@ -138,6 +157,12 @@ def oblicz(stan):
         "res": res,
         "v_drop": v_drop,
         "v_drop_normal": v_drop_normal,
+        "metoda": metoda,
+        "u0": u0,
+        "r_test": r_test,
+        "r_zestawu": r_zestawu,
+        "r_obw": r_obw,
+        "krzywa_karty": krzywa_karty,
         "sustained_voltage": napiecie_peak,
         "sustained_normal": napiecie_normal,
         "napiecie_ok": (napiecie_peak >= minimalne) if minimalne else None,

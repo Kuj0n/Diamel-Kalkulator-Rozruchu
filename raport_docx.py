@@ -56,11 +56,18 @@ TEKSTY = {
         "proba": "Czas jednej próby", "proby": "Ilość prób rozruchu", "ladowanie": "Czas pełnego naładowania",
         "brak": "—", "szt": "szt.", "wlasny": "parametry wpisane ręcznie",
         "rezystancja": "Rezystancja linii kablowej", "spadek_znam": "Spadek napięcia przy prądzie znamionowym",
+        "r_zestawu": "Rezystancja wewnętrzna zestawu akumulatorów", "r_obw": "Rezystancja obwodu na jeden rozrusznik",
+        "r_obw_obl": "{q} × {z} mΩ (zestaw) + {k} mΩ (kable)", "r_obw_obl1": "{z} mΩ (zestaw) + {k} mΩ (kable)",
+        "r_test": "Rezystancja obwodu testowego (krzywa rozrusznika)", "u0": "Napięcie bez obciążenia (z krzywej)",
+        "u_min_ok_k": "Napięcie wystarczające - obwód {r} mΩ nie przekracza obwodu testowego {t} mΩ z krzywej rozrusznika; zapas {z} V ponad minimalne {m} V.",
+        "u_min_zle_k": "Napięcie za niskie - obwód {r} mΩ jest większy niż obwód testowy {t} mΩ z krzywej rozrusznika; brakuje {z} V do minimalnego {m} V. Należy zmniejszyć rezystancję obwodu (więcej łańcuchów równoległych, większy przekrój albo krótsze kable).",
+        "metoda_upr": "Metoda uproszczona (brak rezystancji obwodu testowego z karty rozrusznika albo rezystancji wewnętrznej akumulatora): od napięcia kręcenia z karty odjęto spadek na kablach. Wynik jest zachowawczy - napięcie z karty zawiera już spadek w obwodzie testowym.",
+        "l_karta": "krzywa rozrusznika (obwód testowy {t} mΩ)", "l_obw": "obwód projektu {r} mΩ",
         "spadek_szczyt": "Spadek napięcia przy prądzie szczytowym", "u_szczyt": "Napięcie na rozruszniku (prąd szczytowy)",
         "u_znam": "Napięcie na rozruszniku (prąd znamionowy)", "u_min_ok": "Napięcie wystarczające - zapas {z} V ponad minimalne {m} V.",
         "u_min_zle": "Napięcie za niskie - brakuje {z} V do minimalnego {m} V. Należy zwiększyć przekrój albo skrócić kable.",
         "u_min_brak": "Napięcie minimalne rozrusznika nie zostało podane - nie sprawdzono.",
-        "wykres": "Rys. {n}. Napięcie na rozruszniku w funkcji prądu: U(I) = U kręcenia − I · R",
+        "wykres": "Rys. {n}. Napięcie na rozruszniku w funkcji prądu: U(I) = U0 − I · R obwodu",
         "graniczny": "Napięcie minimalne zostanie osiągnięte przy prądzie {i} A.",
         "graniczny_0": "Napięcie kręcenia jest niższe niż napięcie minimalne rozrusznika.",
         "os_prad": "Prąd rozrusznika [A]", "os_nap": "Napięcie [V]", "l_znam": "znamionowy", "l_szczyt": "szczytowy", "l_min": "minimalne",
@@ -123,11 +130,18 @@ TEKSTY = {
         "proba": "Cranking time per attempt", "proby": "Number of attempts", "ladowanie": "Full re-charge time",
         "brak": "—", "szt": "pcs.", "wlasny": "custom parameters",
         "rezystancja": "Battery cable resistance", "spadek_znam": "Voltage drop at rated current",
+        "r_zestawu": "Battery set internal resistance", "r_obw": "Circuit resistance per starter motor",
+        "r_obw_obl": "{q} × {z} mΩ (battery set) + {k} mΩ (cables)", "r_obw_obl1": "{z} mΩ (battery set) + {k} mΩ (cables)",
+        "r_test": "Test circuit resistance (starter curve)", "u0": "Open-circuit voltage (from the curve)",
+        "u_min_ok_k": "Voltage sufficient - the {r} mΩ circuit does not exceed the {t} mΩ test circuit of the starter curve; {z} V margin above the {m} V minimum.",
+        "u_min_zle_k": "Voltage too low - the {r} mΩ circuit exceeds the {t} mΩ test circuit of the starter curve; {z} V below the {m} V minimum. Reduce the circuit resistance (more parallel strings, larger cross-section or shorter cables).",
+        "metoda_upr": "Simplified method (no test circuit resistance from the starter data sheet or no battery internal resistance): the cable voltage drop was subtracted from the cranking voltage of the data sheet. The result is conservative - the data sheet voltage already includes the drop in the test circuit.",
+        "l_karta": "starter curve (test circuit {t} mΩ)", "l_obw": "project circuit {r} mΩ",
         "spadek_szczyt": "Voltage drop at peak current", "u_szczyt": "Voltage at starter (peak current)",
         "u_znam": "Voltage at starter (rated current)", "u_min_ok": "Voltage sufficient - {z} V margin above the {m} V minimum.",
         "u_min_zle": "Voltage too low - {z} V below the {m} V minimum. Increase the cable cross-section or shorten the cables.",
         "u_min_brak": "Starter minimum voltage not given - not checked.",
-        "wykres": "Fig. {n}. Voltage at the starter motor versus current: U(I) = U cranking − I · R",
+        "wykres": "Fig. {n}. Voltage at the starter motor versus current: U(I) = U0 − I · R circuit",
         "graniczny": "The minimum voltage is reached at {i} A.",
         "graniczny_0": "The cranking voltage is lower than the starter minimum voltage.",
         "os_prad": "Starter current [A]", "os_nap": "Voltage [V]", "l_znam": "rated", "l_szczyt": "peak", "l_min": "minimum",
@@ -171,7 +185,7 @@ TEKSTY = {
 OPISY = {
     "Polski": {
         "o_konfig": "Zestawienie danych wejściowych obliczeń. Parametry rozrusznika pochodzą z karty katalogowej producenta (prąd znamionowy - prąd kręcenia po rozpędzeniu silnika, prąd szczytowy - chwila załączenia, gdy wirnik jest jeszcze nieruchomy). Napięcie kręcenia to napięcie na zaciskach akumulatorów pod obciążeniem rozruchowym; napięcie minimalne - najniższe napięcie na zaciskach rozrusznika, przy którym zapewnia on jeszcze obroty potrzebne do uruchomienia silnika.",
-        "o_spadek": "Rezystancja obwodu kablowego wynika z prawa Ohma dla przewodu: R = ρ·L / (n·A), gdzie ρ = 1,68·10⁻⁸ Ω·m to rezystywność miedzi w 20 °C, L - całkowita długość obwodu (przewód dodatni i ujemny), n - liczba żył połączonych równolegle na biegun, A - przekrój jednej żyły. Spadek napięcia rośnie liniowo z prądem (ΔU = I·R), dlatego napięcie na rozruszniku opisuje prosta U(I) = U kręcenia − I·R. Najgorszy przypadek to prąd szczytowy w chwili załączenia rozrusznika.",
+        "o_spadek": "Krzywa rozrusznika (np. wg SAE J544) jest wyznaczona dla obwodu testowego o określonej rezystancji (akumulator + kable): napięcie na rozruszniku opisuje prosta U(I) = U0 − I·R_test, gdzie U0 to napięcie akumulatorów bez obciążenia. W rzeczywistym układzie napięcie na rozruszniku wynosi U(I) = U0 − I·R_obw, gdzie R_obw to rezystancja wewnętrzna zestawu akumulatorów (szeregowo się sumuje, łańcuchy równoległe ją dzielą; gdy z jednego zestawu kręci kilka rozruszników naraz, przez akumulatory płynie suma ich prądów) i rezystancja kabli R = ρ·L / (n·A) (ρ = 1,68·10⁻⁸ Ω·m - miedź w 20 °C, L - długość obwodu tam i z powrotem, n - żyły równolegle na biegun, A - przekrój żyły). Gdy R_obw nie przekracza R_test, rozrusznik pracuje co najmniej tak, jak pokazuje krzywa. Najgorszy przypadek to prąd szczytowy w chwili załączenia.",
         "o_spadek_uwagi": "Obliczenie nie obejmuje rezystancji zacisków, połączeń i izolatorów ani wzrostu rezystancji z temperaturą (dla miedzi ok. 0,4 % na 1 °C - kabel o temperaturze 60 °C ma rezystancję o ok. 16 % większą niż w 20 °C). W razie małego zapasu napięcia warto zwiększyć przekrój albo skrócić kable.",
         "o_cca": "CCA (Cold Cranking Amps, wg SAE J537) to prąd, który nowy, w pełni naładowany akumulator 12 V oddaje przez 30 s w temperaturze −18 °C, utrzymując napięcie co najmniej 7,2 V. Norma EN 50342-1 stosuje inną metodę badania, więc wartości CCA wg SAE i EN nie są wprost porównywalne. W zestawie łańcuchy połączone równolegle sumują prąd CCA i pojemność, a akumulatory połączone szeregowo - napięcie.",
         "o_pojemnosc": "Zużycie ładunku podczas rozruchu: Q = I·t, gdzie I to łączny prąd wszystkich rozruszników, a t - łączny czas kręcenia we wszystkich próbach. Przyjęto prąd szczytowy przez cały czas prób - w rzeczywistości po rozpędzeniu silnika prąd spada do wartości znamionowej, więc wynik jest zachowawczy. Przy dużych prądach rozładowania akumulator oddaje mniej niż pojemność nominalna (podawaną zwykle dla rozładowania 20-godzinnego, C20 - efekt Peukerta); uwzględnia to zapas pojemności zestawu. Akumulatory rozruchowe agregatu są stale utrzymywane w stanie naładowania przez ładowarkę, dlatego kryterium jest zużycie mniejsze od pojemności zestawu.",
@@ -180,7 +194,7 @@ OPISY = {
     },
     "English": {
         "o_konfig": "Summary of the calculation input data. The starter motor parameters are taken from the manufacturer's data sheet (rated current - cranking current once the engine is rolling, peak current - the moment of engagement with the armature still stationary). The cranking voltage is the voltage at the battery terminals under cranking load; the minimum voltage is the lowest voltage at the starter terminals at which it still provides the speed needed to start the engine.",
-        "o_spadek": "The cable circuit resistance follows Ohm's law for a conductor: R = ρ·L / (n·A), where ρ = 1.68·10⁻⁸ Ω·m is the resistivity of copper at 20 °C, L - total circuit length (positive and negative cable), n - number of cores in parallel per pole, A - cross-section of one core. The voltage drop rises linearly with current (ΔU = I·R), so the voltage at the starter motor is described by the line U(I) = U cranking − I·R. The worst case is the peak current at starter engagement.",
+        "o_spadek": "The starter motor curve (e.g. per SAE J544) is determined for a test circuit of a specified resistance (battery + cables): the voltage at the starter follows the line U(I) = U0 − I·R_test, where U0 is the open-circuit battery voltage. In the actual system the voltage at the starter is U(I) = U0 − I·R_circ, where R_circ is the internal resistance of the battery set (adds up in series, divided by parallel strings; when several starters crank from one battery set, the sum of their currents flows through the batteries) plus the cable resistance R = ρ·L / (n·A) (ρ = 1.68·10⁻⁸ Ω·m - copper at 20 °C, L - circuit length both ways, n - cores in parallel per pole, A - core cross-section). When R_circ does not exceed R_test, the starter performs at least as shown by the curve. The worst case is the peak current at engagement.",
         "o_spadek_uwagi": "The calculation does not include the resistance of terminals, connections and isolators, nor the increase of resistance with temperature (about 0.4 % per 1 °C for copper - a cable at 60 °C has about 16 % higher resistance than at 20 °C). If the voltage margin is small, increase the cross-section or shorten the cables.",
         "o_cca": "CCA (Cold Cranking Amps, per SAE J537) is the current a new, fully charged 12 V battery can deliver for 30 s at −18 °C while maintaining at least 7.2 V. EN 50342-1 uses a different test method, so SAE and EN CCA values are not directly comparable. In a battery set, strings connected in parallel add up CCA and capacity, batteries connected in series add up voltage.",
         "o_pojemnosc": "Charge consumed during starting: Q = I·t, where I is the total current of all starter motors and t the total cranking time of all attempts. The peak current is assumed for the whole cranking time - in reality the current drops to the rated value once the engine is rolling, so the result is conservative. At high discharge currents a battery delivers less than its nominal capacity (usually stated for a 20-hour discharge, C20 - Peukert effect); this is covered by the battery set capacity margin. Generator starting batteries are permanently kept charged by the battery charger, so the criterion is consumption lower than the battery set capacity.",
@@ -582,6 +596,28 @@ class Raport:
         r = w["res"]
         wiersze = [(t["rezystancja"], f"R = ρ·L / (n·A) = 1,68·10⁻⁸ × {n.g(w['cable_l'])} / ({w['cable_cores']} × {n.g(w['cable_a'])}·10⁻⁶)".replace("1,68", n(1.68)),
                     f"{n(r * 1000, 3)} mΩ")]
+        if w["metoda"] == "karta":
+            zest, obw, mm = w["r_zestawu"] * 1000, w["r_obw"] * 1000, lambda v: n(v, 3)
+            wiersze += [
+                (t["r_zestawu"], f"{w['batt_series']} × {n.g(w['batt_rint_mohm'])} mΩ / {w['batt_parallel']}", f"{mm(zest)} mΩ"),
+                (t["r_obw"], (t["r_obw_obl"] if w["starter_qty"] > 1 else t["r_obw_obl1"]).format(q=w["starter_qty"], z=mm(zest), k=mm(r * 1000)), (f"{mm(obw)} mΩ",)),
+                (t["r_test"], "", f"{n.g(w['r_test_mohm'])} mΩ"),
+                (t["u0"], f"U0 = {n(w['crank_v'])} + {n.g(w['starter_normal'])} × {n(w['r_test'], 4)}", f"{n(w['u0'])} V"),
+                (t["u_znam"], f"U = {n(w['u0'])} − {n.g(w['starter_normal'])} × {n(w['r_obw'], 5)}", f"{n(w['sustained_normal'])} V"),
+                (t["u_szczyt"], f"U = {n(w['u0'])} − {n.g(w['starter_peak'])} × {n(w['r_obw'], 5)}", (f"{n(w['sustained_voltage'])} V",)),
+            ]
+            self.tabela_wartosci([(None, wiersze)], [t["wielkosc"], t["obliczenie"], t["wynik"]], [2.05, 2.0, 0.8])
+            if w["napiecie_ok"] is None:
+                self.ocena(None, t["u_min_brak"])
+            else:
+                zapas = abs(w["sustained_voltage"] - w["min_v"])
+                self.ocena(w["napiecie_ok"], (t["u_min_ok_k"] if w["napiecie_ok"] else t["u_min_zle_k"]).format(
+                    r=n(obw, 2), t=n.g(w["r_test_mohm"]), z=n(zapas), m=n(w["min_v"])))
+            self.wykres()
+            if w["prad_graniczny"] is not None:
+                self.akapit(t["graniczny"].format(i=n.g(round(w["prad_graniczny"]))) if w["prad_graniczny"] else t["graniczny_0"], 8.5, kolor=SZARY, po=2)
+            self.akapit(t["o_spadek_uwagi"], 8.5, kolor=SZARY, przed=4, po=2)
+            return
         if w["starter_normal"]:
             wiersze.append((t["spadek_znam"], f"ΔU = I·R = {n.g(w['starter_normal'])} × {n(r, 6)}", f"{n(w['v_drop_normal'])} V"))
         wiersze.append((t["spadek_szczyt"], f"ΔU = I·R = {n.g(w['starter_peak'])} × {n(r, 6)}", f"{n(w['v_drop'])} V"))
@@ -594,6 +630,7 @@ class Raport:
         else:
             zapas = abs(w["sustained_voltage"] - w["min_v"])
             self.ocena(w["napiecie_ok"], (t["u_min_ok"] if w["napiecie_ok"] else t["u_min_zle"]).format(z=n(zapas), m=n(w["min_v"])))
+        self.akapit(t["metoda_upr"], 8.5, kolor=SZARY, przed=2, po=2)
         self.wykres()
         if w["prad_graniczny"] is not None:
             self.akapit(t["graniczny"].format(i=n.g(round(w["prad_graniczny"]))) if w["prad_graniczny"] else t["graniczny_0"], 8.5, kolor=SZARY, po=2)
@@ -745,7 +782,10 @@ def rysuj_wykres(w, t, n):
     krzywa = w["krzywa"]
     i_max = krzywa[-1]["i"] or 1
     u_dol = max(0, int(min(w["min_v"] or 1e9, krzywa[-1]["u"]) - 1))
-    u_gora = int(max(w["crank_v"], w["min_v"] or 0) + 1.5)
+    u_gora = int(max(w["u0"], w["min_v"] or 0) + 1.5)
+    karta = w.get("krzywa_karty")
+    if karta:
+        u_dol = max(0, int(min(u_dol, karta[-1]["u"] - 1)))
     x = lambda i: l + i / i_max * (szer - l - p)
     y = lambda u: g + (1 - (u - u_dol) / ((u_gora - u_dol) or 1)) * (wys - g - d)
 
@@ -767,6 +807,18 @@ def rysuj_wykres(w, t, n):
 
     punkty = [(x(k["i"]), y(k["u"])) for k in krzywa]
     rys.polygon(punkty + [(x(i_max), wys - d), (x(0), wys - d)], fill="#FDF3E1")
+    if karta:  # krzywa karty (obwód testowy) - przerywana szara
+        for a_, b_ in zip(karta[:-1], karta[1:]):
+            x0_, y0_, x1_, y1_ = x(a_["i"]), y(a_["u"]), x(b_["i"]), y(b_["u"])
+            for k_ in range(0, 10, 2):
+                rys.line([(x0_ + (x1_ - x0_) * k_ / 10, y0_ + (y1_ - y0_) * k_ / 10), (x0_ + (x1_ - x0_) * (k_ + 1) / 10, y0_ + (y1_ - y0_) * (k_ + 1) / 10)], fill="#9CA3AF", width=2 * skala)
+        # legenda w prawym górnym rogu (linie schodzą w dół w prawo - tam jest wolne miejsce)
+        lx, ly = szer - p - 330 * skala, g + 8 * skala
+        rys.line([(lx, ly), (lx + 34 * skala, ly)], fill="#B45309", width=4 * skala)
+        rys.text((lx + 44 * skala, ly), t["l_obw"].format(r=n(w["r_obw"] * 1000, 2)), fill="#B45309", font=f_et, anchor="lm")
+        for k_ in range(0, 34, 8):
+            rys.line([(lx + k_ * skala, ly + 22 * skala), (lx + (k_ + 4) * skala, ly + 22 * skala)], fill="#9CA3AF", width=2 * skala)
+        rys.text((lx + 44 * skala, ly + 22 * skala), t["l_karta"].format(t=n.g(w["r_test_mohm"])), fill="#6B7280", font=f_os, anchor="lm")
     rys.line(punkty, fill="#B45309", width=4 * skala, joint="curve")
     if w["min_v"]:
         ym = y(w["min_v"])
@@ -775,10 +827,10 @@ def rysuj_wykres(w, t, n):
         rys.text((szer - p, ym - 6 * skala), f"{t['l_min']} {n(w['min_v'], 1)} V", fill="#B91C1C", font=f_et, anchor="rb")
 
     def punkt(prad, kolor, opis):
-        px, py = x(prad), y(w["crank_v"] - prad * w["res"])
+        px, py = x(prad), y(w["u0"] - prad * w["r_obw"])
         r = 8 * skala
         rys.ellipse([px - r, py - r, px + r, py + r], fill=kolor, outline="white", width=3 * skala)
-        rys.text((px, py - 14 * skala), f"{opis} {n.g(prad)} A · {n(w['crank_v'] - prad * w['res'])} V", fill=kolor, font=f_et, anchor="mb")
+        rys.text((px, py - 14 * skala), f"{opis} {n.g(prad)} A · {n(w['u0'] - prad * w['r_obw'])} V", fill=kolor, font=f_et, anchor="mb")
     if w["starter_normal"]:
         punkt(w["starter_normal"], "#1D4ED8", t["l_znam"])
     punkt(w["starter_peak"], "#B45309", t["l_szczyt"])

@@ -19,9 +19,12 @@ import webview
 
 import obliczenia
 import raport_docx
-from baza import Baza, KATALOG_DANYCH, POLA_URZADZEN, PLIKI, url_bazy
+import re
+
+from baza import Baza, KATALOG_DANYCH, KATALOG_PLIKOW, POLA_URZADZEN, PLIKI
 from konto import Konto
-from konfiguracja_app import VERSION, BUILD_DATE, CHANGELOG, GITHUB_REPO, NAZWA_PROGRAMU, URL_ZGLOSZEN
+import konto
+from konfiguracja_app import VERSION, BUILD_DATE, CHANGELOG, GITHUB_REPO, NAZWA_PROGRAMU, URL_ZGLOSZEN, URL_BAZY
 
 PLIK_USTAWIEN = os.path.join(KATALOG_DANYCH, "ustawienia.json")
 NAGLOWKI = {"User-Agent": f"Diamel-{NAZWA_PROGRAMU}/{VERSION}"}
@@ -60,6 +63,23 @@ def pobierz_json(url, timeout=6.0):
     req = urllib.request.Request(url, headers=NAGLOWKI)
     with urllib.request.urlopen(req, timeout=timeout) as odp:
         return json.loads(odp.read().decode("utf-8"))
+
+
+def wyslij_json(url, dane, timeout=15.0):
+    """POST z JSON; odpowiedź serwera (także z kodem błędu) jako słownik; brak sieci -> wyjątek."""
+    req = urllib.request.Request(url, data=json.dumps(dane).encode("utf-8"), headers={**NAGLOWKI, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as odp:
+            return json.loads(odp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            return json.loads(e.read().decode("utf-8"))
+        except Exception:
+            raise e
+
+
+ZALACZNIKI_MAX_MB = 5  # limit serwera zgłoszeń (diamel.pl/api/zgloszenie.php)
+ZALACZNIKI_TYPY = ("Pliki (*.pdf;*.png;*.jpg;*.jpeg;*.doc;*.docx;*.xls;*.xlsx;*.txt;*.zip)",)
 
 
 def _czytaj_json(sciezka, domyslnie):
@@ -172,21 +192,19 @@ class Api:
 
     def baza(self):
         b = self._baza
-        return {"wersja": b.wersja, "starters": b.urzadzenia("starters"), "batteries": b.urzadzenia("batteries"),
-                "zrodla": {r: b.zrodla(r) for r in PLIKI}}
+        return {"wersja": b.wersja, **{r: b.urzadzenia(r) for r in PLIKI}, "zrodla": {r: b.zrodla(r) for r in PLIKI}}
 
     def sprawdz_baze(self):
+        """Wersja bazy w panelu diamel.pl (numer zwiększany przy każdej zmianie) - inna niż lokalna = do pobrania."""
         try:
-            dane = pobierz_json(url_bazy("wersja_bazy.json"))
+            dane = wyslij_json(URL_BAZY, {"akcja": "wersja"}, timeout=6.0)
         except Exception as e:
             return {"ok": False, "blad": str(e)}
-        wersja = dane.get("version", "0.0.0")
-        try:
-            nowsza = wez_krotke(wersja) > wez_krotke(self._baza.wersja)
-        except ValueError:
-            nowsza = False
-        return {"ok": True, "nowsza": nowsza, "wersja": wersja, "lokalna": self._baza.wersja,
-                "opis": (dane.get("changelog") or "").strip().split("\n\n")[0]}
+        if not dane.get("ok"):
+            return {"ok": False, "blad": dane.get("blad", "Serwer bazy nie odpowiada.")}
+        wersja = str(dane.get("wersja", ""))
+        return {"ok": True, "nowsza": bool(wersja) and wersja != str(self._baza.wersja), "wersja": wersja, "lokalna": self._baza.wersja,
+                "opis": f"Zmieniono {dane.get('zmieniono', '')}: {dane.get('opis', '')}".strip(": ")}
 
     def aktualizuj_baze(self):
         """
@@ -194,11 +212,12 @@ class Api:
         wpisy własne zostają. Przed zmianą kopia w kopie_bazy.
         """
         try:
-            wersja = pobierz_json(url_bazy("wersja_bazy.json")).get("version", "")
-            nowe = {r: pobierz_json(url_bazy(p), timeout=15.0).get(r) for r, p in PLIKI.items()}
+            odp = wyslij_json(URL_BAZY, {"akcja": "baza"}, timeout=20.0)
         except Exception as e:
             return {"ok": False, "blad": f"Nie udało się pobrać bazy: {e}"}
-        if not all(isinstance(v, dict) and v for v in nowe.values()) or not wersja:
+        wersja = str(odp.get("wersja", ""))
+        nowe = {r: odp.get(r) for r in PLIKI}
+        if not odp.get("ok") or not wersja or not all(isinstance(v, dict) for v in nowe.values()) or not nowe["starters"]:
             return {"ok": False, "blad": "Pobrana baza jest niepełna - zostaje dotychczasowa."}
         poprzednia = self._baza.wersja
         kopia = self._baza.kopia()
@@ -229,6 +248,34 @@ class Api:
     def usun_urzadzenie(self, rodzaj, nazwa):
         self._baza.usun_urzadzenie(rodzaj, nazwa)
         return {"ok": True, "baza": self.baza()}
+
+    def plik_bazy(self, id_):
+        """Plik producenta z bazy (krzywa, karta katalogowa): kopia lokalna albo pobranie z serwera (wymaga zalogowania)."""
+        if not re.fullmatch(r"[0-9a-f]{16}\.(pdf|png|jpg|jpeg)", str(id_)):
+            return {"ok": False, "blad": "Nieprawidłowy plik."}
+        sciezka = os.path.join(KATALOG_PLIKOW, id_)
+        if os.path.isfile(sciezka):
+            return {"ok": True, "sciezka": sciezka}
+        token = konto.token()
+        if not token:
+            return {"ok": False, "zaloguj": True, "blad": "Pliki producentów z bazy są dostępne po zalogowaniu (Ustawienia - Konto Diamel)."}
+        try:
+            odp = wyslij_json(URL_BAZY, {"akcja": "plik", "id": id_, "token": token}, timeout=60.0)
+        except Exception as e:
+            return {"ok": False, "blad": f"Brak połączenia z serwerem: {e}"}
+        if not odp.get("ok"):
+            return {"ok": False, "zaloguj": bool(odp.get("zaloguj")), "blad": odp.get("blad", "Nie udało się pobrać pliku.")}
+        os.makedirs(KATALOG_PLIKOW, exist_ok=True)
+        with open(sciezka + ".tmp", "wb") as f:
+            f.write(base64.b64decode(odp["plik"]))
+        os.replace(sciezka + ".tmp", sciezka)
+        return {"ok": True, "sciezka": sciezka}
+
+    def otworz_plik_bazy(self, id_):
+        wynik = self.plik_bazy(id_)
+        if wynik["ok"]:
+            os.startfile(wynik["sciezka"])
+        return wynik
 
     def folder_bazy(self):
         os.startfile(os.path.join(KATALOG_DANYCH, "data"))
@@ -390,7 +437,11 @@ class Api:
         webbrowser.open(adres)
         return {"ok": True}
 
-    def zglos(self, email, kategoria, nazwa, opis, projekt=None):
+    def wybierz_zalaczniki(self):
+        wybor = self._okno.create_file_dialog(webview.FileDialog.OPEN, allow_multiple=True, file_types=ZALACZNIKI_TYPY)
+        return [{"sciezka": p, "nazwa": os.path.basename(p), "kb": max(1, round(os.path.getsize(p) / 1024))} for p in (wybor or []) if os.path.isfile(p)]
+
+    def zglos(self, email, kategoria, nazwa, opis, projekt=None, zalaczniki=()):
         """
         Prośba o dodanie sprzętu do bazy albo zgłoszenie błędu - formularz na diamel.pl (program nie zawiera haseł).
         projekt: bieżący projekt dołączany jako plik .json (przy zgłoszeniu błędu).
@@ -399,9 +450,14 @@ class Api:
         if projekt:
             tresc = json.dumps({k: v for k, v in projekt.items() if not k.startswith("_")}, ensure_ascii=False, indent=4).encode("utf-8")
             zgloszenie["zalaczniki"] = [{"nazwa": f"{projekt.get('project_no') or 'projekt'}_rozruch.json", "dane": base64.b64encode(tresc).decode("ascii")}]
+        pliki = [p for p in dict.fromkeys(zalaczniki or []) if p and os.path.isfile(p)]
+        if sum(os.path.getsize(p) for p in pliki) > ZALACZNIKI_MAX_MB * 1048576:
+            return {"ok": False, "blad": f"Załączniki są większe niż {ZALACZNIKI_MAX_MB} MB razem - wybierz mniejsze pliki."}
+        zgloszenie.setdefault("zalaczniki", []).extend(
+            {"nazwa": os.path.basename(p), "dane": base64.b64encode(open(p, "rb").read()).decode("ascii")} for p in pliki)
         req = urllib.request.Request(URL_ZGLOSZEN, data=json.dumps(zgloszenie).encode("utf-8"), headers={**NAGLOWKI, "Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=20) as odp:
+            with urllib.request.urlopen(req, timeout=60) as odp:
                 wynik = json.loads(odp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             try:

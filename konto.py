@@ -49,6 +49,11 @@ def _usun(sciezka):
         pass
 
 
+def token():
+    """Token zalogowanego konta (pliki producentów z bazy) albo None."""
+    return _czytaj_token()
+
+
 def _czytaj_token():
     try:
         with open(PLIK_TOKENU, "rb") as f:

@@ -379,7 +379,9 @@ function rysujObliczenia() {
       <div class="naglowek-karty"><h3><span class="nr">1</span>Projekt</h3>${pSegment('language', [['English', 'Raport EN'], ['Polski', 'Raport PL']])}</div>
       <div class="pola">
         ${pTekst('project_no', 'Numer projektu', { podpowiedz: 'np. PRJ-2026-002' })}${pTekst('client', 'Klient')}${pTekst('author', 'Przygotował (inicjały)')}
-        ${pTekst('genset', 'Model agregatu', { podpowiedz: 'np. C3500D5EB' })}${pTekst('engine', 'Model silnika', { podpowiedz: 'np. QSK78-G39' })}
+        ${pTekst('genset', 'Model agregatu', { podpowiedz: 'np. C3500D5EB' })}<div class="p-pole"><label class="etykieta" for="f-engine"><span>Model silnika</span>${P.engine && BAZA.engines?.[P.engine] ? '<span class="zbazy">z bazy</span>' : ''}</label>
+          <input class="pole" id="f-engine" data-pole="engine" list="lista-silnikow" value="${esc(P.engine)}" spellcheck="false" placeholder="${Object.keys(BAZA.engines || {}).length ? 'wybierz z bazy albo wpisz' : 'np. QSK78-G39'}">
+          <datalist id="lista-silnikow">${Object.keys(BAZA.engines || {}).sort((a, b) => a.localeCompare(b, 'pl')).map((n) => `<option value="${esc(n)}">${esc(BAZA.engines[n].genset || '')}</option>`).join('')}</datalist></div>
         <div class="p-pole cca-silnika"><label class="zaznacz" style="margin-bottom:6px"><input type="checkbox" id="f-cca-znane" ${P.cca_znane ? 'checked' : ''}> CCA silnika znane z karty katalogowej</label>
           ${P.cca_znane ? `<div class="z-jednostka"><input class="pole" id="f-cca_silnika" data-pole="cca_silnika" value="${esc(P.cca_silnika)}" inputmode="decimal" placeholder="wymagane CCA, np. 2000"><span class="jedn">A</span></div><div class="blad-pola ukryty" data-blad="cca_silnika"></div>`
             : '<span class="podp">bez wymagania - CCA oceniane tylko informacyjnie</span>'}</div>
@@ -461,6 +463,7 @@ widokObl.addEventListener('change', (e) => {
     return;
   }
   if (e.target.dataset.model) wybierzModel(e.target.dataset.model, e.target.value);
+  if (e.target.id === 'f-engine' && BAZA.engines?.[e.target.value]) wybierzModel('engines', e.target.value);
 });
 widokObl.addEventListener('click', (e) => {
   const b = e.target.closest('[data-seg] button');
@@ -492,25 +495,46 @@ function dopasujSzeregowo() {
 }
 function ustawPole(pole) { const el = $(`[data-pole="${pole}"]`); if (el) el.value = P[pole]; }
 
-function wybierzModel(rodzaj, nazwa) {
+function zastosujModel(rodzaj, nazwa) {
   const u = BAZA[rodzaj][nazwa];
-  const pole = rodzaj === 'starters' ? 'starter_model' : 'batt_model';
-  P[pole] = nazwa;
-  if (u) {
-    const t = (v) => (v === undefined || v === null || v === 0 || v === '' ? '' : String(v));
-    if (rodzaj === 'starters') {
-      if ([12, 24].includes(+u.voltage_v)) P.system_v = String(u.voltage_v);
-      Object.assign(P, { starter_normal: t(u.normal_current_a), starter_peak: t(u.peak_current_a),
-        crank_v: t(u.crank_voltage_v) || String(domyslneKrecenie(+P.system_v)), min_v: t(u.min_voltage_v) });
-      if (u.curve_path) P.images.curve = u.curve_path;
-    } else {
-      Object.assign(P, { batt_type: u.type || P.batt_type, batt_v: t(u.voltage_v) || '12', batt_ah: t(u.capacity_ah), batt_cca: t(u.cca_a) });
-      if (u.batt_path) P.images.batt = u.batt_path;
-      const n = +P.system_v / +P.batt_v;
-      if (Number.isInteger(n) && n > 0) P.batt_series = String(n);
-    }
-    toast(`Wczytano parametry z bazy: <b>${esc(nazwa)}</b>`, 'ok', null, 2500);
+  P[{ starters: 'starter_model', batteries: 'batt_model', engines: 'engine' }[rodzaj]] = nazwa;
+  if (!u) return false;
+  const t = (v) => (v === undefined || v === null || v === 0 || v === '' ? '' : String(v));
+  if (rodzaj === 'starters') {
+    if ([12, 24].includes(+u.voltage_v)) P.system_v = String(u.voltage_v);
+    Object.assign(P, { starter_normal: t(u.normal_current_a), starter_peak: t(u.peak_current_a),
+      crank_v: t(u.crank_voltage_v) || String(domyslneKrecenie(+P.system_v)), min_v: t(u.min_voltage_v) });
+    if (u.curve_path) P.images.curve = u.curve_path;
+    if (u.pliki?.obraz) plikDoZalacznika(u.pliki.obraz.id, 'curve');
+  } else if (rodzaj === 'batteries') {
+    Object.assign(P, { batt_type: u.type || P.batt_type, batt_v: t(u.voltage_v) || '12', batt_ah: t(u.capacity_ah), batt_cca: t(u.cca_a) });
+    if (u.batt_path) P.images.batt = u.batt_path;
+    if (u.pliki?.obraz) plikDoZalacznika(u.pliki.obraz.id, 'batt');
+    const n = +P.system_v / +P.batt_v;
+    if (Number.isInteger(n) && n > 0) P.batt_series = String(n);
+  } else {  // silnik: agregat, napięcie układu, liczba i model rozrusznika, wymagane CCA z karty silnika
+    if (u.genset && !P.genset) P.genset = u.genset;
+    if ([12, 24].includes(+u.voltage_v)) P.system_v = String(u.voltage_v);
+    if (+u.starter_qty > 0) P.starter_qty = String(u.starter_qty);
+    if (+u.cca_a > 0) Object.assign(P, { cca_znane: '1', cca_silnika: String(u.cca_a) });
+    if (u.starter_model && BAZA.starters[u.starter_model]) zastosujModel('starters', u.starter_model);
   }
+  return true;
+}
+
+let ostrzezenieOLogowaniu = false;
+/** Krzywa rozrusznika / karta akumulatora z bazy jako załącznik raportu (plik producenta - po zalogowaniu). */
+async function plikDoZalacznika(id, klucz) {
+  const r = await api('plik_bazy', id);
+  if (r?.ok) { P.images[klucz] = r.sciezka; zmiana(); rysujZalaczniki(); return; }
+  if (r?.zaloguj && !ostrzezenieOLogowaniu) {
+    ostrzezenieOLogowaniu = true;
+    toast('Krzywa rozrusznika / karta z bazy trafi do raportu po zalogowaniu kontem Diamel (Ustawienia).', '', { tekst: 'Zaloguj', fn: () => pokaz('ustawienia') }, 9000);
+  } else if (r && !r.zaloguj) toast(esc(r.blad || 'Nie udało się pobrać pliku z bazy.'), 'blad');
+}
+
+function wybierzModel(rodzaj, nazwa) {
+  if (zastosujModel(rodzaj, nazwa)) toast(`Wczytano parametry z bazy: <b>${esc(nazwa)}</b>`, 'ok', null, 2500);
   zmiana();
   const przewiniecie = $('#dane')?.scrollTop || 0;
   rysujObliczenia();
@@ -712,10 +736,13 @@ async function generujRaport(format = 'pdf') {
 }
 
 // ------------------------------------------------------------------ baza urządzeń
-const RODZAJE = { starters: 'Rozruszniki', batteries: 'Akumulatory' };
+const RODZAJE = { starters: 'Rozruszniki', batteries: 'Akumulatory', engines: 'Silniki' };
+const NAZWA_POJ = { starters: 'rozrusznik', batteries: 'akumulator', engines: 'silnik' };
 function opisUrzadzenia(rodzaj, u) {
-  return rodzaj === 'starters' ? `${lc(u.voltage_v)} V · ${lc(u.peak_current_a)} A szczyt · kręcenie ${lc(u.crank_voltage_v)} V`
-    : `${esc(u.type || '')} · ${lc(u.capacity_ah)} Ah · ${lc(u.cca_a)} CCA`;
+  const pliki = u.pliki ? ` · ${Object.keys(u.pliki).length === 2 ? 'krzywa + karta' : u.pliki.obraz ? 'obraz' : 'karta'}` : '';
+  if (rodzaj === 'engines') return `${esc(u.genset || '')}${u.genset ? ' · ' : ''}${lc(u.voltage_v)} V · ${lc(u.starter_qty)} × rozrusznik${+u.cca_a ? ` · CCA ${lc(u.cca_a)} A` : ''}${pliki}`;
+  return (rodzaj === 'starters' ? `${lc(u.voltage_v)} V · ${lc(u.peak_current_a)} A szczyt · kręcenie ${lc(u.crank_voltage_v)} V`
+    : `${esc(u.type || '')} · ${lc(u.capacity_ah)} Ah · ${lc(u.cca_a)} CCA`) + pliki;
 }
 
 function rysujBaze() {
@@ -759,8 +786,9 @@ function rysujEdytor() {
   const pola = INFO.pola_urzadzen[baza.rodzaj];
   const wartosc = (k) => (u[k] === undefined || u[k] === null ? '' : u[k]);
   el.innerHTML = `<div class="karta">
-    <div class="naglowek-karty"><h3>${ik(baza.rodzaj === 'starters' ? 'silnik' : 'bateria')} ${nowy ? `Nowy ${baza.rodzaj === 'starters' ? 'rozrusznik' : 'akumulator'}` : esc(baza.wybrany)}</h3>
-      ${!nowy ? `<button class="btn btn-maly" id="e-uzyj">${ik('dalej')} Użyj w obliczeniach</button>` : ''}</div>
+    <div class="naglowek-karty"><h3>${ik(baza.rodzaj === 'batteries' ? 'bateria' : 'silnik')} ${nowy ? `Nowy ${NAZWA_POJ[baza.rodzaj]}` : esc(baza.wybrany)}</h3>
+      <span class="wartosci">${Object.entries(u.pliki || {}).map(([rola, p]) => `<button class="btn btn-maly" data-plik-bazy="${esc(p.id)}" title="${esc(p.nazwa)}">${ik(rola === 'obraz' ? 'obraz' : 'dokument')} ${rola === 'obraz' ? 'Krzywa / obraz' : 'Karta katalogowa'}</button>`).join('')}
+      ${!nowy ? `<button class="btn btn-maly" id="e-uzyj">${ik('dalej')} Użyj w obliczeniach</button>` : ''}</span></div>
     <div class="pola p2">
       <div class="p-pole szer2"><div class="podp" style="margin-bottom:8px">${zrodlo === 'globalna' ? 'Urządzenie z bazy globalnej Diamel. Zapisanie zmian utworzy Twoją wersję (●) - baza globalna zostaje bez zmian.' : zrodlo === 'zmieniona' ? '● Twoja wersja urządzenia z bazy globalnej - ma pierwszeństwo przed wersją z bazy.' : '● Wpis własny - nie ma go w bazie globalnej. Możesz go zgłosić do dodania (Zgłoszenia).'}</div>
         <label class="etykieta" for="e-nazwa">Nazwa modelu</label><input class="pole" id="e-nazwa" value="${esc(nowy ? '' : baza.wybrany)}"></div>
@@ -795,6 +823,12 @@ function rysujEdytor() {
     BAZA = r.baza; if (!przywroc) baza.wybrany = null; rysujBaze();
   });
   $('#e-uzyj')?.addEventListener('click', () => { const n = baza.wybrany; pokaz('obliczenia'); wybierzModel(baza.rodzaj, n); });
+  $$('[data-plik-bazy]', el).forEach((b) => b.onclick = async () => {
+    b.disabled = true;
+    const r = await api('otworz_plik_bazy', b.dataset.plikBazy);
+    b.disabled = false;
+    if (!r?.ok) toast(esc(r?.blad || 'Nie udało się otworzyć pliku.'), r?.zaloguj ? '' : 'blad', r?.zaloguj ? { tekst: 'Zaloguj', fn: () => pokaz('ustawienia') } : null, 7000);
+  });
 }
 
 // ------------------------------------------------------------------ ustawienia
@@ -882,7 +916,7 @@ function rysujUstawienia() {
 }
 
 // ------------------------------------------------------------------ zgłoszenia
-const zglos = { rodzaj: 'sprzet', kategoria: 'Rozrusznik', email: '', nazwa: '', opis: '', projekt: true };
+const zglos = { rodzaj: 'sprzet', kategoria: 'Rozrusznik', email: '', nazwa: '', opis: '', projekt: true, zalaczniki: [] };
 function rysujZglos() {
   const el = $('#widok-zglos');
   const sprzet = zglos.rodzaj === 'sprzet';
@@ -891,28 +925,41 @@ function rysujZglos() {
     <p class="opis" style="margin:0">${sprzet ? 'Brakuje rozrusznika, akumulatora albo ładowarki? Podaj model i link do karty katalogowej - po weryfikacji trafi do bazy globalnej i do wszystkich użytkowników.' : 'Opisz, co się stało. Możesz dołączyć bieżący projekt - ułatwi to odtworzenie błędu.'}</p>
     <div class="pola p2">
       <div class="p-pole"><label class="etykieta" for="z-email">Twój e-mail (do odpowiedzi)</label><input class="pole" id="z-email" type="email" value="${esc(zglos.email)}"></div>
-      ${sprzet ? `<div class="p-pole"><label class="etykieta">Kategoria</label><div class="segment pelny" id="z-kat">${['Rozrusznik', 'Akumulator', 'Ładowarka'].map((k) => `<button data-v="${k}" class="${zglos.kategoria === k ? 'akt' : ''}">${k}</button>`).join('')}</div></div>
+      ${sprzet ? `<div class="p-pole"><label class="etykieta">Kategoria</label><div class="segment pelny" id="z-kat">${['Rozrusznik', 'Akumulator', 'Silnik', 'Ładowarka'].map((k) => `<button data-v="${k}" class="${zglos.kategoria === k ? 'akt' : ''}">${k}</button>`).join('')}</div></div>
         <div class="p-pole szer2"><label class="etykieta" for="z-nazwa">Producent i model</label><input class="pole" id="z-nazwa" value="${esc(zglos.nazwa)}"></div>` : ''}
     </div>
     <div><label class="etykieta" for="z-opis">${sprzet ? 'Parametry, link do karty katalogowej' : 'Opis problemu'}</label><textarea class="pole" id="z-opis" rows="7">${esc(zglos.opis)}</textarea></div>
+    <div><span class="etykieta">Załączniki${sprzet ? ' (karta katalogowa, krzywa, zdjęcie tabliczki)' : ''} - razem do 5 MB</span>
+      <div class="lista-zalacznikow">${zglos.zalaczniki.map((z, i) => `<span class="znacznik akt">${ik('plik')} ${esc(z.nazwa)} <span class="podp">${z.kb} kB</span><button class="btn btn-bez btn-ikona" data-usun-zal="${i}" title="Usuń">${ik('x')}</button></span>`).join('')}
+        <button class="btn btn-maly" id="z-dodaj-zal">${ik('plus')} Dodaj pliki…</button></div></div>
     ${!sprzet ? `<label class="zaznacz"><input type="checkbox" id="z-projekt" ${zglos.projekt ? 'checked' : ''}> Dołącz bieżący projekt (${esc(P.project_no || 'bez nazwy')})</label>` : ''}
     <div><button class="btn btn-hr" id="z-wyslij">${ik('wyslij')} Wyślij</button></div>
   </div>`;
   const zapamietaj = () => { zglos.email = $('#z-email').value; zglos.opis = $('#z-opis').value; if ($('#z-nazwa')) zglos.nazwa = $('#z-nazwa').value; if ($('#z-projekt')) zglos.projekt = $('#z-projekt').checked; };
   $$('#z-rodzaj button').forEach((b) => b.onclick = () => { zapamietaj(); zglos.rodzaj = b.dataset.v; rysujZglos(); });
   $$('#z-kat button').forEach((b) => b.onclick = () => { zapamietaj(); zglos.kategoria = b.dataset.v; rysujZglos(); });
+  $('#z-dodaj-zal').onclick = async () => {
+    zapamietaj();
+    const nowe = (await api('wybierz_zalaczniki')) || [];
+    zglos.zalaczniki = [...zglos.zalaczniki, ...nowe.filter((n) => !zglos.zalaczniki.some((z) => z.sciezka === n.sciezka))];
+    const kb = zglos.zalaczniki.reduce((s, z) => s + z.kb, 0);
+    if (kb > 5 * 1024) toast(`Załączniki mają razem ${lp(kb / 1024, 1)} MB - limit to 5 MB.`, 'blad');
+    rysujZglos();
+  };
+  $$('[data-usun-zal]').forEach((b) => b.onclick = () => { zapamietaj(); zglos.zalaczniki.splice(+b.dataset.usunZal, 1); rysujZglos(); });
   $('#z-wyslij').onclick = async () => {
     zapamietaj();
     if (!/^\S+@\S+\.\S+$/.test(zglos.email.trim())) { toast('Podaj poprawny adres e-mail.', 'blad'); return $('#z-email').focus(); }
     if (sprzet && !zglos.nazwa.trim()) { toast('Podaj producenta i model.', 'blad'); return $('#z-nazwa').focus(); }
     if (!sprzet && !zglos.opis.trim()) { toast('Opisz problem.', 'blad'); return $('#z-opis').focus(); }
     const b = $('#z-wyslij'); b.disabled = true; b.textContent = 'Wysyłanie…';
-    const r = sprzet ? await api('zglos', zglos.email.trim(), zglos.kategoria, zglos.nazwa.trim(), zglos.opis.trim(), null)
-      : await api('zglos', zglos.email.trim(), 'Błąd programu', `Zgłoszenie błędu Kalkulatora v${INFO.wersja}`, zglos.opis.trim(), zglos.projekt ? P : null);
+    const pliki = zglos.zalaczniki.map((z) => z.sciezka);
+    const r = sprzet ? await api('zglos', zglos.email.trim(), zglos.kategoria, zglos.nazwa.trim(), zglos.opis.trim(), null, pliki)
+      : await api('zglos', zglos.email.trim(), 'Błąd programu', `Zgłoszenie błędu Kalkulatora v${INFO.wersja}`, zglos.opis.trim(), zglos.projekt ? P : null, pliki);
     b.disabled = false; b.innerHTML = `${ik('wyslij')} Wyślij`;
     if (!r?.ok) return toast(`Nie udało się wysłać: ${esc(r?.blad || '')}`, 'blad');
     toast('Zgłoszenie wysłane - odpowiemy na podany adres e-mail. Dziękujemy!', 'ok', null, 7000);
-    zglos.nazwa = ''; zglos.opis = ''; rysujZglos();
+    zglos.nazwa = ''; zglos.opis = ''; zglos.zalaczniki = []; rysujZglos();
   };
 }
 

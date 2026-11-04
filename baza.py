@@ -1,11 +1,12 @@
 """
 baza.py
 
-Baza rozruszników i akumulatorów - jak lista pracowników w Korektorze HR:
-- baza globalna Diamel (repozytorium GitHub) pobierana w całości i zastępowana przy każdej aktualizacji
+Baza rozruszników, akumulatorów i silników - jak lista pracowników w Korektorze HR:
+- baza globalna Diamel (panel administracyjny diamel.pl) pobierana w całości i zastępowana przy każdej aktualizacji
   (wpisy usunięte z bazy globalnej znikają także u użytkownika),
 - wpisy własne użytkownika (nowe albo zmienione urządzenia z bazy globalnej) trzymane osobno - aktualizacja ich nie rusza.
-Pliki: %APPDATA%\\Diamel\\Kalkulator Rozruchu\\data: starters.json, batteries.json (kopia bazy globalnej), wlasne.json.
+Pliki: %APPDATA%\\Diamel\\Kalkulator Rozruchu\\data: starters.json, batteries.json, engines.json (kopia bazy globalnej), wlasne.json;
+pliki producentów z bazy (krzywe, karty katalogowe) - folder pliki (pobierane po zalogowaniu, przy pierwszym użyciu).
 """
 import json
 import os
@@ -13,13 +14,14 @@ import shutil
 import sys
 from datetime import datetime
 
-from konfiguracja_app import DB_VERSION, URL_BAZY, sciezka_do_zasobu
+from konfiguracja_app import DB_VERSION, sciezka_do_zasobu
 
 KATALOG_DANYCH = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "Diamel", "Kalkulator Rozruchu")
 KATALOG_BAZY = os.path.join(KATALOG_DANYCH, "data")
 KATALOG_KOPII = os.path.join(KATALOG_DANYCH, "kopie_bazy")
 PLIK_WLASNYCH = os.path.join(KATALOG_BAZY, "wlasne.json")
-PLIKI = {"starters": "starters.json", "batteries": "batteries.json"}
+KATALOG_PLIKOW = os.path.join(KATALOG_DANYCH, "pliki")
+PLIKI = {"starters": "starters.json", "batteries": "batteries.json", "engines": "engines.json"}
 KOPIE_MAX = 10
 
 # Pola urządzeń: (klucz, opis, jednostka, liczba). Edytor zachowuje też pola spoza tej listy.
@@ -47,6 +49,14 @@ POLA_URZADZEN = {
         ("weight_kg", "Masa", "kg", True),
         ("dimensions_mm", "Wymiary", "mm", False),
         ("batt_path", "Karta katalogowa (obraz)", "", False),
+    ],
+    "engines": [
+        ("genset", "Agregat (model)", "", False),
+        ("voltage_v", "Napięcie układu rozruchowego", "V", True),
+        ("starter_qty", "Liczba rozruszników", "szt.", True),
+        ("starter_model", "Rozrusznik (nazwa z bazy rozruszników)", "", False),
+        ("cca_a", "Wymagane CCA (karta silnika)", "A", True),
+        ("notes", "Uwagi", "", False),
     ],
 }
 
@@ -77,14 +87,10 @@ def _stare_miejsca():
     return [KATALOG_BAZY] + [m for m in dict.fromkeys(miejsca) if os.path.normcase(m) != os.path.normcase(KATALOG_BAZY)]
 
 
-def url_bazy(plik):
-    return URL_BAZY + plik
-
-
 class Baza:
     def __init__(self):
-        self.globalna = {"starters": {}, "batteries": {}}
-        self.wlasne = {"starters": {}, "batteries": {}}
+        self.globalna = {r: {} for r in PLIKI}
+        self.wlasne = {r: {} for r in PLIKI}
         self.wersja = DB_VERSION
         self.przeniesiono_z = ""
         self._przygotuj()
@@ -103,7 +109,7 @@ class Baza:
         os.makedirs(KATALOG_BAZY, exist_ok=True)
         wlasne = {r: {} for r in PLIKI}
         for stare in _stare_miejsca():
-            dane = {r: (_czytaj(os.path.join(stare, p), {}) or {}).get(r) for r, p in PLIKI.items()}
+            dane = {r: (_czytaj(os.path.join(stare, PLIKI[r]), {}) or {}).get(r) for r in ("starters", "batteries")}  # wersje 1.x / 2.0 - bez silników
             if all(isinstance(v, dict) for v in dane.values()):
                 for rodzaj, wpisy in dane.items():
                     wbud = _wbudowana(rodzaj)
@@ -112,14 +118,14 @@ class Baza:
                     self.przeniesiono_z = stare
                 break
         for rodzaj, p in PLIKI.items():
-            wbudowany = sciezka_do_zasobu(os.path.join("data", p))
+            wbudowany = sciezka_do_zasobu(os.path.join("data", p))  # kopia bazy z serwera z dnia kompilacji
             if os.path.exists(wbudowany):
                 shutil.copy(wbudowany, self._plik(rodzaj))
         _zapisz(PLIK_WLASNYCH, wlasne)
 
     def wczytaj(self):
         for rodzaj in PLIKI:
-            dane = _czytaj(self._plik(rodzaj)) or _czytaj(sciezka_do_zasobu(os.path.join("data", PLIKI[rodzaj])), {})
+            dane = _czytaj(self._plik(rodzaj)) or _czytaj(sciezka_do_zasobu(os.path.join("data", PLIKI[rodzaj])), {}) or {}
             self.globalna[rodzaj] = dane.get(rodzaj, {})
             if rodzaj == "starters":
                 self.wersja = dane.get("version", self.wersja)
@@ -198,7 +204,7 @@ class Baza:
             return ""
         if os.path.isabs(sciezka):
             return sciezka if os.path.isfile(sciezka) else ""
-        for kandydat in (sciezka_do_zasobu(sciezka), os.path.join(KATALOG_DANYCH, sciezka)):
+        for kandydat in (sciezka_do_zasobu(sciezka), os.path.join(KATALOG_DANYCH, sciezka), os.path.join(KATALOG_PLIKOW, sciezka)):
             if os.path.isfile(kandydat):
                 return os.path.abspath(kandydat)
         return ""

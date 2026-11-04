@@ -108,7 +108,17 @@ def test_baza():
     """Migracja starej wspólnej bazy (wpisy własne wydzielone), pełna aktualizacja bazy globalnej, wpisy własne nietknięte."""
     import baza as modul
     katalog = modul.KATALOG_BAZY
-    wbud = {r: modul._wbudowana(r) for r in modul.PLIKI}
+    # baza wbudowana w instalator (kopia z serwera z dnia kompilacji) - tu przykładowa
+    wbud = {"starters": {"Rozrusznik A": {"voltage_v": 24, "peak_current_a": 1600, "min_voltage_v": 11.2},
+                         "Rozrusznik B": {"voltage_v": 24, "peak_current_a": 2000, "min_voltage_v": 8}},
+            "batteries": {"Akumulator A": {"type": "AGM", "capacity_ah": 75, "cca_a": 975}}, "engines": {}}
+    modul._wbudowana = lambda r: wbud[r]
+    folder_wbud = os.path.join(os.environ["APPDATA"], "wbudowana", "data")
+    os.makedirs(folder_wbud, exist_ok=True)
+    for r, plik in modul.PLIKI.items():
+        json.dump({"version": "1", r: wbud[r]}, open(os.path.join(folder_wbud, plik), "w", encoding="utf-8"))
+    oryginalna = modul.sciezka_do_zasobu
+    modul.sciezka_do_zasobu = lambda sc: os.path.join(os.path.dirname(folder_wbud), sc) if sc.startswith("data") else oryginalna(sc)
     stara = {r: dict(v) for r, v in wbud.items()}
     pierwszy = next(iter(stara["starters"]))
     stara["starters"][pierwszy] = {**stara["starters"][pierwszy], "min_voltage_v": 99}  # zmieniony przez użytkownika
@@ -117,7 +127,8 @@ def test_baza():
     if os.path.exists(modul.PLIK_WLASNYCH):
         os.remove(modul.PLIK_WLASNYCH)  # stan sprzed tej wersji: tylko wspólna baza
     for r, p in modul.PLIKI.items():
-        json.dump({"version": "1.1.0", r: stara[r]}, open(os.path.join(katalog, p), "w", encoding="utf-8"))
+        if r in stara:  # wersja 2.0 nie miała silników
+            json.dump({"version": "1.1.0", r: stara[r]}, open(os.path.join(katalog, p), "w", encoding="utf-8"))
     b = modul.Baza()
     assert b.zrodla("starters")[pierwszy] == "zmieniona" and b.zrodla("batteries")["Mój akumulator"] == "wlasna"
     assert b.urzadzenia("starters")[pierwszy]["min_voltage_v"] == 99

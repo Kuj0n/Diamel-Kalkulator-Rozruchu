@@ -4,11 +4,17 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.0.0"
-DB_VERSION = "1.1.0"  # wersja bazy, gdy lokalny plik jej nie zawiera; aktualna wersja i historia: data/wersja_bazy.json
+VERSION = "2.1.0"
+DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
 BUILD_DATE = "2026-11-04 18:00"
 
 CHANGELOG = """
+v2.1.0 (2026-11-04)
+- Baza urządzeń pobierana z serwera diamel.pl - administrator edytuje ją w panelu (jak listę pracowników w Korektorze HR).
+- Nowa część bazy: silniki - wybranie silnika wpisuje agregat, napięcie, liczbę i model rozrusznika oraz wymagane CCA.
+- Krzywe rozruszników i karty katalogowe z bazy (po zalogowaniu kontem Diamel): krzywa trafia do raportu, kartę można otworzyć.
+- Zgłoszenia z załącznikami (karta katalogowa, zdjęcie tabliczki).
+
 v2.0.0 (2026-11-04)
 - Nowy wygląd programu (jak diamel.pl): jasny / ciemny motyw, jeden ekran z danymi i wynikami.
 - Wyniki liczone na bieżąco podczas wpisywania - bez przycisku "Oblicz".
@@ -51,7 +57,7 @@ v1.0.0 (2026-10-01)
 # Aktualizacje (GitHub: wydania programu, baza z gałęzi master) i zgłoszenia (formularz na diamel.pl)
 NAZWA_PROGRAMU = "kalkulator_rozruchu"
 GITHUB_REPO = "Kuj0n/Diamel-Kalkulator-Rozruchu"
-URL_BAZY = f"https://raw.githubusercontent.com/{GITHUB_REPO}/master/data/"
+URL_BAZY = "https://diamel.pl/api/rozruch.php"  # baza urządzeń edytowana w panelu administracyjnym (Kalkulator Rozruchu)
 URL_ZGLOSZEN = "https://diamel.pl/api/zgloszenie.php"
 URL_KONTA = "https://diamel.pl/api/konto.php"  # logowanie kontem Diamel (szablon raportu firmy, inicjały)
 

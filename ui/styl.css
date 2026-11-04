@@ -384,3 +384,6 @@ details.sekcja[open] > summary svg { transform: rotate(90deg); }
 .redundancja .podp { margin: 0; grid-column: 1 / -1; }
 .urz.lokalna b::before { content: '●'; color: var(--zolty); margin-right: 6px; font-size: 0.8em; }
 .urz em { font-style: normal; color: var(--zolty-tekst); }
+.lista-zalacznikow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lista-zalacznikow .znacznik { cursor: default; padding-right: 3px; }
+.lista-zalacznikow .znacznik svg { width: 14px; height: 14px; }

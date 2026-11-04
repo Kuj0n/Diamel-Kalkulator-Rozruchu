@@ -2,7 +2,7 @@
 
 Program na Windows do doboru akumulatorów rozruchowych i ładowarek dla agregatów prądotwórczych. Liczy spadki napięć na kablach i rozrusznikach, zapotrzebowanie prądowe, zapas CCA i zużycie pojemności, dobiera prąd ładowarki i generuje raport DOCX (PL / EN).
 
-> Status: **wersja 2.0.0** (2026-11-04). Instalator: [Releases](../../releases/latest)
+> Status: **wersja 2.1.0** (2026-11-04). Instalator: [Releases](../../releases/latest)
 
 ## Możliwości
 
@@ -12,7 +12,7 @@ Program na Windows do doboru akumulatorów rozruchowych i ładowarek dla agregat
 - **Kable i profil rozruchu** - przekroje, długości, liczba i czas prób rozruchu
 - **Wyniki** - napięcie na rozruszniku, zużycie pojemności (%), CCA (informacyjnie), dobór ładowarki
 - **Raport DOCX** z załącznikami (krzywe rozruszników, karty katalogowe)
-- **Baza rozruszników i akumulatorów** (`data/*.json`) - własne wpisy + scalanie z bazą globalną, zgłaszanie nowego sprzętu przez formularz na diamel.pl
+- **Baza rozruszników, akumulatorów i silników** z serwera diamel.pl (edytowana w panelu administracyjnym) + własne wpisy, zgłaszanie nowego sprzętu z załącznikami
 - **Automatyczna aktualizacja** programu i bazy z GitHub Releases
 
 ## Uruchomienie ze źródeł
@@ -39,13 +39,11 @@ Test obliczeń (zgodność z wersją 1.2.0 + nowe funkcje): `python testy/test_o
 
 ## Baza urządzeń
 
-Baza globalna to pliki [`data/starters.json`](data/starters.json) i [`data/batteries.json`](data/batteries.json); wersja i historia zmian są w [`data/wersja_bazy.json`](data/wersja_bazy.json). Program porównuje wersję z polem `version` lokalnej bazy i proponuje scalenie nowych wpisów z własnymi.
-
-Aktualizacja bazy **bez wydawania nowej wersji programu**:
-
-1. Edytuj `data/starters.json` / `data/batteries.json`.
-2. W `data/wersja_bazy.json` podnieś `version` i dopisz wpis na początku `changelog`, np. `"v1.1.1 (2026-11-10)\n- Dodano ...\n\n"` + poprzednia historia.
-3. Commit + push do `master`. Programy zaproponują aktualizację przy następnym uruchomieniu (GitHub odświeża pliki do 5 minut).
+Baza globalna (rozruszniki, akumulatory, silniki, krzywe i karty katalogowe) **nie jest w tym repozytorium** - administrator edytuje ją
+w panelu administracyjnym diamel.pl (zakładka *Kalkulator Rozruchu*), a program pobiera ją w całości przy starcie
+(`diamel.pl/api/rozruch.php`) - zmiana bazy nie wymaga wydania programu. Wpisy własne użytkownika są trzymane osobno
+(`%APPDATA%\Diamel\Kalkulator Rozruchu\data\wlasne.json`). Pliki producentów (krzywe, karty) pobiera tylko zalogowany użytkownik
+z dostępem do programu. Instalator zawiera kopię bazy z dnia kompilacji (pierwsze uruchomienie bez internetu).
 
 ## Jak działają aktualizacje programu
 

@@ -11,7 +11,7 @@ plik_glowny = "aplikacja.py"
 pliki_modulow = ["interfejs.py", "obliczenia.py", "raport_docx.py", "baza.py", "konto.py", "konfiguracja_app.py"]
 folder_ui = "ui"  # wygląd okna (HTML/CSS/JS, czcionki) - Edge WebView2 przez pywebview
 plik_ikony = os.path.join(folder_zasoby, "ikona.ico")
-pliki_bazy = ["starters.json", "batteries.json"]
+url_bazy_serwera = "https://diamel.pl/api/rozruch.php"  # baza urządzeń z panelu administracyjnego
 
 inno_setup_compiler = r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
 if not os.path.exists(inno_setup_compiler):
@@ -26,22 +26,29 @@ wersja = re.search(r'VERSION\s*=\s*"([^"]+)"', kod_konf).group(1)
 data_wydania = re.search(r'BUILD_DATE\s*=\s*"([^"]+)"', kod_konf).group(1)[:10]
 changelog_full = re.search(r'CHANGELOG\s*=\s*"""(.*?)"""', kod_konf, re.DOTALL).group(1).strip()
 github_repo = re.search(r'GITHUB_REPO\s*=\s*"([^"]+)"', kod_konf).group(1)
-with open(os.path.join(folder_data, "wersja_bazy.json"), "r", encoding="utf-8") as f:
-    wersja_bazy = json.load(f)["version"]
-
-# Paczka = pliki wydania na GitHub (instalator). Baza nie jest częścią wydania -
-# program pobiera data/*.json z gałęzi master repozytorium.
+# Paczka = pliki wydania na GitHub (instalator). Baza urządzeń: kopia z serwera z dnia kompilacji (pierwsze
+# uruchomienie bez internetu) - program pobiera aktualną bazę z panelu przy każdym starcie.
 folder_archiwum = os.path.join(wersja, "Archiwum")
 folder_paczka = os.path.join(wersja, "Paczka")
 
 os.makedirs(folder_archiwum, exist_ok=True)
 os.makedirs(folder_paczka, exist_ok=True)
 
-def zapisz_baze(plik_zrodlowy, plik_docelowy):
-    """Kopiuje plik bazy z wersją z data/wersja_bazy.json (program porównuje ją przy aktualizacji)."""
-    with open(plik_zrodlowy, "r", encoding="utf-8") as f: dane = json.load(f)
-    dane["version"] = wersja_bazy
-    with open(plik_docelowy, "w", encoding="utf-8") as f: json.dump(dane, f, ensure_ascii=False, indent=4)
+def pobierz_baze(folder):
+    """Aktualna baza z serwera (diamel.pl/api/rozruch.php) do folderu data programu - pliki starters/batteries/engines.json."""
+    import urllib.request
+    req = urllib.request.Request(url_bazy_serwera, data=json.dumps({"akcja": "baza"}).encode(),
+                                 headers={"Content-Type": "application/json", "User-Agent": "Diamel-kompilacja"})
+    with urllib.request.urlopen(req, timeout=30) as odp:
+        baza = json.loads(odp.read().decode("utf-8"))
+    if not baza.get("ok") or not baza.get("starters"):
+        raise SystemExit("❌ Serwer zwrócił niepełną bazę urządzeń - kompilacja przerwana.")
+    os.makedirs(folder, exist_ok=True)
+    for rodzaj in ("starters", "batteries", "engines"):
+        with open(os.path.join(folder, f"{rodzaj}.json"), "w", encoding="utf-8") as f:
+            json.dump({"version": str(baza["wersja"]), rodzaj: baza.get(rodzaj) or {}}, f, ensure_ascii=False, indent=4)
+    print(f"🗄️  Baza urządzeń z serwera: wersja {baza['wersja']} ({len(baza['starters'])} rozruszników, "
+          f"{len(baza.get('batteries') or {})} akumulatorów, {len(baza.get('engines') or {})} silników)")
 
 print("📂 Kopiowanie rozdzielonych modułów, danych i zasobów...")
 for m_plik in [plik_glowny] + pliki_modulow:
@@ -51,9 +58,7 @@ if os.path.exists(folder_zasoby):
     shutil.copytree(folder_zasoby, os.path.join(folder_archiwum, folder_zasoby), dirs_exist_ok=True)
 shutil.copytree(folder_ui, os.path.join(folder_archiwum, folder_ui), dirs_exist_ok=True)
 
-os.makedirs(os.path.join(folder_archiwum, folder_data), exist_ok=True)
-for plik in pliki_bazy:
-    zapisz_baze(os.path.join(folder_data, plik), os.path.join(folder_archiwum, folder_data, plik))
+pobierz_baze(os.path.join(folder_archiwum, folder_data))
 
 ikona_skopiowana = False
 if os.path.exists(plik_ikony): 

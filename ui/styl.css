@@ -127,7 +127,7 @@ textarea.pole { resize: vertical; min-height: 120px; width: 100%; line-height: 1
 .poz .licznik.zolty { background: var(--zolty-tlo); color: var(--zolty-tekst); }
 .dol { margin-top: auto; padding: 12px 8px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; display: grid; gap: 5px; }
 .dol b { color: var(--text); font-weight: 600; }
-.dol .akt-ok { color: var(--kolor-tekst); }
+.dol .akt-ok { color: var(--zielony-tekst); }
 .dol .akt-nowa { color: var(--zolty-tekst); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .motyw { display: flex; padding: 3px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--border-2); margin-top: 8px; }
 .motyw button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 0; border-radius: 9px; font-size: 0.76rem; color: var(--muted); background: none; border: 0; cursor: pointer; }

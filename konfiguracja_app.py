@@ -4,11 +4,14 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.2.3"
+VERSION = "2.2.4"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
 BUILD_DATE = "2026-11-04 23:00"
 
 CHANGELOG = """
+v2.2.4 (2026-11-04)
+- Pasek na dole: „aktualny” na zielono (wcześniej w kolorze programu - żółtym, jak ostrzeżenie).
+
 v2.2.3 (2026-11-04)
 - Przy uruchomieniu, gdy jest nowa wersja, program od razu pyta: pobrać i zainstalować czy później (zamiast znikającego komunikatu).
 

@@ -4,11 +4,14 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.2.6"
+VERSION = "2.2.7"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
 BUILD_DATE = "2026-11-05 10:00"
 
 CHANGELOG = """
+v2.2.7 (2026-11-05)
+- Panel administracyjny: w dzienniku widać uruchomienie programu i pobranie bazy urządzeń (z kontem).
+
 v2.2.6 (2026-11-05)
 - Panel administracyjny widzi otwarty program (Status -> Komputery: „sesja otwarta”, program i jego wersja).
 

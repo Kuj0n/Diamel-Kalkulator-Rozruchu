@@ -219,7 +219,7 @@ class Api:
         wpisy własne zostają. Przed zmianą kopia w kopie_bazy.
         """
         try:
-            odp = wyslij_json(URL_BAZY, {"akcja": "baza"}, timeout=20.0)
+            odp = wyslij_json(URL_BAZY, {"akcja": "baza", **({"token": konto.token()} if konto.token() else {})}, timeout=20.0)  # konto - do dziennika panelu
         except Exception as e:
             return {"ok": False, "blad": f"Nie udało się pobrać bazy: {e}"}
         wersja = str(odp.get("wersja", ""))

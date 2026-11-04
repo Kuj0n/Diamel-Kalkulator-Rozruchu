@@ -7,8 +7,9 @@ import shutil
 # --- KONFIGURACJA ---
 folder_zasoby = "Zasoby"
 folder_data = "data" 
-plik_glowny = "main.py"
-pliki_modulow = ["modele.py", "widoki.py", "kontrolery.py", "narzedzia.py", "konfiguracja_app.py"]
+plik_glowny = "aplikacja.py"
+pliki_modulow = ["interfejs.py", "obliczenia.py", "raport_docx.py", "baza.py", "konto.py", "konfiguracja_app.py"]
+folder_ui = "ui"  # wygląd okna (HTML/CSS/JS, czcionki) - Edge WebView2 przez pywebview
 plik_ikony = os.path.join(folder_zasoby, "ikona.ico")
 pliki_bazy = ["starters.json", "batteries.json"]
 
@@ -17,7 +18,7 @@ if not os.path.exists(inno_setup_compiler):
     print("❌ Błąd: Nie znaleziono kompilatora Inno Setup!")
     exit(1)
 
-print("🔍 Analizowanie konfiguracji (wersja MVC - Kalkulator Rozruchu)...")
+print("🔍 Analizowanie konfiguracji (Kalkulator Rozruchu)...")
 with open("konfiguracja_app.py", "r", encoding="utf-8") as f:
     kod_konf = f.read()
 
@@ -48,6 +49,7 @@ for m_plik in [plik_glowny] + pliki_modulow:
 
 if os.path.exists(folder_zasoby):
     shutil.copytree(folder_zasoby, os.path.join(folder_archiwum, folder_zasoby), dirs_exist_ok=True)
+shutil.copytree(folder_ui, os.path.join(folder_archiwum, folder_ui), dirs_exist_ok=True)
 
 os.makedirs(os.path.join(folder_archiwum, folder_data), exist_ok=True)
 for plik in pliki_bazy:
@@ -77,9 +79,12 @@ print(f"⏳ Kompilacja struktury programu dla wersji {wersja}...")
 cmd_icon = f'--icon="ikona.ico" --add-data "ikona.ico;."' if ikona_skopiowana else ""
 cmd_zasoby = f'--add-data "{folder_zasoby};{folder_zasoby}"' if os.path.exists(folder_zasoby) else ""
 
-cmd = (f'python -m PyInstaller --onedir --noconsole --clean {cmd_icon} '
+cmd = (f'python -m PyInstaller --onedir --noconsole --clean --noconfirm {cmd_icon} '
        f'{cmd_zasoby} '
        f'--add-data "{folder_data};{folder_data}" '
+       f'--add-data "{folder_ui};{folder_ui}" '
+       f'--collect-all webview --collect-all clr_loader --collect-all pythonnet --hidden-import clr --hidden-import docx '
+       f'--hidden-import win32com.client --hidden-import pythoncom --hidden-import PIL.ImageDraw --hidden-import PIL.ImageFont '
        f'--version-file="wersja_info.txt" -n "{nazwa_stala}" "{plik_glowny}"')
 
 subprocess.run(cmd, shell=True, cwd=folder_archiwum, check=True)
@@ -107,6 +112,7 @@ OutputBaseFilename=Instalator_Rozruchu_v{wersja}
 Compression=lzma2/ultra
 SolidCompression=yes
 PrivilegesRequired=lowest
+UninstallDisplayIcon={{app}}\\{nazwa_stala}.exe
 InfoBeforeFile={os.path.abspath(plik_info_txt)}
 
 [Languages]
@@ -114,6 +120,10 @@ Name: "pl"; MessagesFile: "compiler:Languages\\Polish.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Utwórz skrót na pulpicie"
+
+[InstallDelete]
+; stare biblioteki (wersje 1.x: Tkinter) - folder data obok programu zostaje, program przenosi z niego bazę użytkownika
+Type: filesandordirs; Name: "{{app}}\\_internal"
 
 [Files]
 Source: "{os.path.abspath(sciezka_folderu_dist)}\\*"; DestDir: "{{app}}"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -2,14 +2,15 @@
 
 Program na Windows do doboru akumulatorów rozruchowych i ładowarek dla agregatów prądotwórczych. Liczy spadki napięć na kablach i rozrusznikach, zapotrzebowanie prądowe, zapas CCA i zużycie pojemności, dobiera prąd ładowarki i generuje raport DOCX (PL / EN).
 
-> Status: **wersja 1.2.0** (2026-11-02). Instalator: [Releases](../../releases/latest)
+> Status: **wersja 2.0.0** (2026-11-04). Instalator: [Releases](../../releases/latest)
 
 ## Możliwości
 
-- **Dane projektowe** - projekt, klient, agregat i silnik, tabela rewizji dokumentu
-- **Konfiguracja sprzętu** - rozruszniki i akumulatory z bazy lub wpisane ręcznie, połączenia szeregowe / równoległe
+- **Jeden ekran: dane i wyniki** - wyniki liczone na bieżąco podczas wpisywania, jasny / ciemny motyw (jak diamel.pl)
+- **Układ 12 / 24 VDC** - rozruszniki i akumulatory z bazy lub wpisane ręcznie, połączenia szeregowe / równoległe (schemat zestawu)
+- **Napięcie na rozruszniku w funkcji prądu** - spadek na kablach liczony płynnie (wykres), napięcie kręcenia i minimalne z karty rozrusznika, prąd graniczny
 - **Kable i profil rozruchu** - przekroje, długości, liczba i czas prób rozruchu
-- **Wyniki** - analiza CCA, spadki napięć, zużycie pojemności, dobór ładowarki
+- **Wyniki** - napięcie na rozruszniku, zużycie pojemności (%), CCA (informacyjnie), dobór ładowarki
 - **Raport DOCX** z załącznikami (krzywe rozruszników, karty katalogowe)
 - **Baza rozruszników i akumulatorów** (`data/*.json`) - własne wpisy + scalanie z bazą globalną, zgłaszanie nowego sprzętu przez formularz na diamel.pl
 - **Automatyczna aktualizacja** programu i bazy z GitHub Releases
@@ -19,12 +20,16 @@ Program na Windows do doboru akumulatorów rozruchowych i ładowarek dla agregat
 Python 3 (Windows), zależności:
 
 ```
-pip install python-docx
+pip install pywebview python-docx
 ```
 
 ```
-python main.py
+python aplikacja.py
 ```
+
+Okno to Edge WebView2 (pywebview) z interfejsem z folderu `ui/`; `ROZRUCH_DEBUG=1` włącza narzędzia programisty (F12).
+
+Test obliczeń (zgodność z wersją 1.2.0 + nowe funkcje): `python testy/test_obliczenia.py`
 
 ## Kompilacja
 
@@ -52,11 +57,13 @@ Program nie zawiera haseł - zgłoszenia sprzętu przyjmuje `diamel.pl/api/zglos
 
 | Plik | Rola |
 |---|---|
-| `main.py` | start, ekran powitalny |
-| `modele.py` | baza danych i obliczenia |
-| `widoki.py` | interfejs (Tkinter) |
-| `kontrolery.py` | logika zakładek, raport DOCX |
-| `narzedzia.py` | aktualizacje, zgłaszanie sprzętu |
+| `aplikacja.py` | start, okno programu |
+| `interfejs.py` | funkcje wywoływane z okna: projekt, raport, aktualizacje, zgłoszenia |
+| `obliczenia.py` | obliczenia układu rozruchowego (bez interfejsu) |
+| `raport_docx.py` | raport DOCX (PL / EN) |
+| `baza.py` | baza rozruszników i akumulatorów użytkownika (%APPDATA%), scalanie z bazą globalną |
+| `ui/` | wygląd okna (HTML, CSS, JS) |
+| `testy/` | test obliczeń |
 | `konfiguracja_app.py` | wersja, changelog, ustawienia |
 | `kompilacja.py` | budowanie wydania |
 

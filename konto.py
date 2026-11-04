@@ -14,6 +14,7 @@ import json
 import os
 import platform
 import shutil
+import threading
 import urllib.error
 import urllib.request
 
@@ -25,6 +26,7 @@ PLIK_TOKENU = os.path.join(KATALOG_DANYCH, "sesja.dat")
 PLIK_KONTA = os.path.join(KATALOG_DANYCH, "konto.json")      # ostatnie dane konta (praca bez internetu)
 PLIK_SZABLONU = os.path.join(KATALOG_DANYCH, "szablon_firmy.docx")
 NAGLOWKI = {"User-Agent": f"Diamel-{NAZWA_PROGRAMU}/{VERSION}", "Content-Type": "application/json"}
+PULS_SEKUNDY = 120  # sygnał "program otwarty" dla panelu (Status -> Komputery)
 
 
 class _DATA_BLOB(ctypes.Structure):
@@ -123,6 +125,34 @@ class Konto:
             return {"ok": False, "blad": f"Brak połączenia z serwerem: {e}"}
         return {"ok": bool(odp.get("ok")), "blad": odp.get("blad", "")}
 
+    def start_puls(self):
+        """Co 2 minuty informuje serwer, że program jest otwarty (panel: Status -> Komputery -> "sesja otwarta")."""
+        if getattr(self, "_puls", None):
+            return
+        self._puls = threading.Event()
+
+        def watek():
+            while not self._puls.is_set():
+                token = _czytaj_token()
+                if token:
+                    try:
+                        _zapytanie({"akcja": "obecnosc", "token": token, "otwarta": True}, timeout=10.0)
+                    except Exception:
+                        pass
+                self._puls.wait(PULS_SEKUNDY)
+        threading.Thread(target=watek, daemon=True).start()
+
+    def zakoncz_sesje(self):
+        """Przy zamknięciu okna: sesja w panelu od razu jako zamknięta (bez czekania 5 minut)."""
+        if getattr(self, "_puls", None):
+            self._puls.set()
+        token = _czytaj_token()
+        if token:
+            try:
+                _zapytanie({"akcja": "obecnosc", "token": token, "otwarta": False}, timeout=3.0)
+            except Exception:
+                pass
+
     def zaloguj(self, login, haslo, zapamietaj=True):
         try:
             odp = _zapytanie({"akcja": "zaloguj", "login": login.strip(), "haslo": haslo, "zapamietaj": bool(zapamietaj), "komputer": platform.node()})
@@ -133,6 +163,7 @@ class Konto:
         os.makedirs(KATALOG_DANYCH, exist_ok=True)
         with open(PLIK_TOKENU, "wb") as f:
             f.write(_dpapi(odp["token"].encode("ascii"), szyfruj=True))
+        self.start_puls()
         try:
             self._zapisz(odp["konto"])
         except Exception as e:
@@ -154,6 +185,7 @@ class Konto:
             self.wyloguj(lokalnie=True)
             return {"ok": True, "stan": self.stan(), "wylogowano": odp.get("blad", "")}
         if odp.get("ok"):
+            self.start_puls()
             try:
                 self._zapisz(odp["konto"])
             except Exception:
@@ -161,6 +193,9 @@ class Konto:
         return {"ok": True, "stan": self.stan()}
 
     def wyloguj(self, lokalnie=False):
+        if getattr(self, "_puls", None):
+            self._puls.set()
+            self._puls = None
         token = _czytaj_token()
         if token and not lokalnie:
             try:

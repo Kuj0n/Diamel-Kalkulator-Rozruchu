@@ -4,11 +4,14 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.2.5"
+VERSION = "2.2.6"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
 BUILD_DATE = "2026-11-05 10:00"
 
 CHANGELOG = """
+v2.2.6 (2026-11-05)
+- Panel administracyjny widzi otwarty program (Status -> Komputery: „sesja otwarta”, program i jego wersja).
+
 v2.2.5 (2026-11-05)
 - Logowanie przy uruchomieniu (jak w Korektorze HR): ekran startowy z logowaniem, „Nie pamiętam hasła” i „Pracuj bez
   logowania”; po zapamiętanym logowaniu program otwiera się od razu.

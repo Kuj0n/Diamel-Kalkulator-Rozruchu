@@ -100,6 +100,7 @@ def main():
         if api._niezapisane and not api._zamykam:
             okno.evaluate_js("window.pytajPrzedZamknieciem && window.pytajPrzedZamknieciem()")
             return False  # okno pyta o zapis i zamyka się przez api.zamknij()
+        api.zakoncz_sesje()
         try:
             os.makedirs(KATALOG_DANYCH, exist_ok=True)
             json.dump({"w": okno.width, "h": okno.height}, open(PLIK_OKNA, "w", encoding="utf-8"))

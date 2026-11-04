@@ -121,6 +121,8 @@ class Baza:
             wbudowany = sciezka_do_zasobu(os.path.join("data", p))  # kopia bazy z serwera z dnia kompilacji
             if os.path.exists(wbudowany):
                 shutil.copy(wbudowany, self._plik(rodzaj))
+            else:  # bez kopii wbudowanej (uruchomienie ze źródeł): pusta kopia globalna, wersja 0 - pełna baza z serwera przy starcie
+                _zapisz(self._plik(rodzaj), {"version": "0", rodzaj: {}})
         _zapisz(PLIK_WLASNYCH, wlasne)
 
     def wczytaj(self):

@@ -4,7 +4,8 @@ konto.py
 Konto Diamel w Kalkulatorze (nieobowiązkowe): po zalogowaniu raporty dostają szablon firmy użytkownika (papier firmowy
 - nagłówek i stopka) i inicjały z imienia i nazwiska. Konto i dostęp do programu nadaje administrator w panelu diamel.pl.
 Token zaszyfrowany Windows DPAPI (tylko ten użytkownik Windows go odczyta), szablon w kopii lokalnej - raporty działają
-też bez internetu. Wylogowanie usuwa token i kopię szablonu.
+też bez internetu. Wylogowanie (także wygaśnięcie sesji albo odebranie dostępu w panelu) usuwa token, kopię szablonu
+i pobrane pliki producentów z bazy (krzywe, karty katalogowe - materiały "Internal Use Only").
 """
 import base64
 import ctypes
@@ -12,10 +13,11 @@ import ctypes.wintypes
 import json
 import os
 import platform
+import shutil
 import urllib.error
 import urllib.request
 
-from baza import KATALOG_DANYCH
+from baza import KATALOG_DANYCH, KATALOG_PLIKOW
 from konfiguracja_app import VERSION, NAZWA_PROGRAMU, URL_KONTA
 
 PROGRAM = "rozruch"  # klucz programu w panelu (DIAMEL_PROGRAMY w lib/hr.php)
@@ -159,5 +161,6 @@ class Konto:
                 pass
         for p in (PLIK_TOKENU, PLIK_KONTA, PLIK_SZABLONU):
             _usun(p)
+        shutil.rmtree(KATALOG_PLIKOW, ignore_errors=True)  # pliki producentów - tylko dla zalogowanych
         self.dane = None
         return {"ok": True, "stan": self.stan()}

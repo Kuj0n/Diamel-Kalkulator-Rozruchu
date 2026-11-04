@@ -4,11 +4,15 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
 BUILD_DATE = "2026-11-04 18:00"
 
 CHANGELOG = """
+v2.1.1 (2026-11-04)
+- Pliki producentów z bazy (krzywe rozruszników, karty katalogowe) usuwane z komputera po wylogowaniu, wygaśnięciu sesji
+  albo odebraniu dostępu - dostępne tylko dla zalogowanych.
+
 v2.1.0 (2026-11-04)
 - Baza urządzeń pobierana z serwera diamel.pl - administrator edytuje ją w panelu (jak listę pracowników w Korektorze HR).
 - Nowa część bazy: silniki - wybranie silnika wpisuje agregat, napięcie, liczbę i model rozrusznika oraz wymagane CCA.

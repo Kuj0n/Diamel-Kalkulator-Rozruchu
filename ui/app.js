@@ -187,9 +187,7 @@ async function sprawdzAktualizacje(recznie) {
     if (!AKT?.ok) toast(`Nie udało się sprawdzić aktualizacji: ${esc(AKT?.blad || '')}`, 'blad');
     else if (AKT.do_instalacji) oknoAktualizacji();
     else toast(`Masz najnowszą wersję programu (${esc(INFO.wersja)}).`, 'ok');
-  } else if (AKT?.do_instalacji) {
-    toast(AKT.wycofana ? `Zalecana jest wersja <b>${esc(AKT.wersja)}</b> (w tej wersji wykryto błąd).` : `Dostępna nowa wersja programu: <b>${esc(AKT.wersja)}</b>`, '', { tekst: 'Zobacz', fn: oknoAktualizacji }, 12000);
-  }
+  } else if (AKT?.do_instalacji) oknoAktualizacji(); // przy starcie pytanie: pobrać i zainstalować czy później
 }
 
 async function oknoAktualizacji() {

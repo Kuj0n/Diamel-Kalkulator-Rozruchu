@@ -129,6 +129,9 @@ class Api:
     def konto_zaloguj(self, login, haslo, zapamietaj=True):
         return self._konto.zaloguj(login, haslo, zapamietaj)
 
+    def konto_przypomnij(self, login):
+        return self._konto.przypomnij(login)
+
     def konto_wyloguj(self):
         return self._konto.wyloguj()
 

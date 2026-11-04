@@ -4,11 +4,18 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.2.4"
+VERSION = "2.2.5"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
-BUILD_DATE = "2026-11-04 23:00"
+BUILD_DATE = "2026-11-05 10:00"
 
 CHANGELOG = """
+v2.2.5 (2026-11-05)
+- Logowanie przy uruchomieniu (jak w Korektorze HR): ekran startowy z logowaniem, „Nie pamiętam hasła” i „Pracuj bez
+  logowania”; po zapamiętanym logowaniu program otwiera się od razu.
+- Wygląd ujednolicony z Korektorem HR: dolny pasek (konto, baza, wersja) i Ustawienia (Konto i dane, O programie,
+  historia zmian w osobnym oknie).
+- Naprawa: ucięta wartość w polu tolerancji CCA.
+
 v2.2.4 (2026-11-04)
 - Pasek na dole: „aktualny” na zielono (wcześniej w kolorze programu - żółtym, jak ostrzeżenie).
 

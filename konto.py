@@ -115,6 +115,14 @@ class Konto:
         with open(PLIK_KONTA, "w", encoding="utf-8") as f:
             json.dump(konto, f, ensure_ascii=False, indent=2)
 
+    def przypomnij(self, login):
+        """Prośba o nowe hasło - serwer powiadamia administratora (jak w Korektorze HR)."""
+        try:
+            odp = _zapytanie({"akcja": "przypomnij", "login": login.strip(), "komputer": platform.node()})
+        except Exception as e:
+            return {"ok": False, "blad": f"Brak połączenia z serwerem: {e}"}
+        return {"ok": bool(odp.get("ok")), "blad": odp.get("blad", "")}
+
     def zaloguj(self, login, haslo, zapamietaj=True):
         try:
             odp = _zapytanie({"akcja": "zaloguj", "login": login.strip(), "haslo": haslo, "zapamietaj": bool(zapamietaj), "komputer": platform.node()})

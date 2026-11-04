@@ -115,7 +115,7 @@ async function start() {
   INFO = await api('informacje');
   ustawMotyw(INFO.program.motyw);
   document.documentElement.dataset.rozmiar = INFO.program.rozmiar;
-  $('#boczne-wersja').textContent = `DIAMEL · v${INFO.wersja}`;
+  $('#start-wersja').textContent = $('#boczne-wersja').textContent = `DIAMEL · v${INFO.wersja}`;
   BAZA = INFO.baza;
   KONTO = INFO.konto;
   ustawProjekt(INFO.projekt);
@@ -123,7 +123,48 @@ async function start() {
   if (INFO.przeniesiono_baze) toast('Twoja baza urządzeń została przeniesiona do folderu ustawień programu (AppData) - własne wpisy zostały zachowane.', 'ok', null, 9000);
   sprawdzAktualizacje(false);
   sprawdzBaze(false);
-  odswiezKonto();
+  if (KONTO.zalogowany) odswiezKonto(); else ekranLogowania();
+}
+
+// Logowanie przy starcie (jak w Korektorze HR). Konto nie jest obowiązkowe - "Pracuj bez logowania".
+function ekranLogowania(blad = '') {
+  $('#ekran-start').classList.remove('ukryty');
+  const t = $('#start-tresc');
+  t.innerHTML = `
+    <div><h2 style="font-size:1.3rem">Zaloguj się</h2><div class="podp">Konto Diamel: papier firmowy Twojej firmy w raportach, inicjały i pliki producentów (krzywe rozruszników, karty katalogowe)</div></div>
+    ${blad ? `<div class="blad">${esc(blad)}</div>` : ''}
+    <div><label class="etykieta" for="l-login">Login</label><input class="pole" id="l-login" autocomplete="username" spellcheck="false"></div>
+    <div><label class="etykieta" for="l-haslo">Hasło</label><input class="pole" id="l-haslo" type="password" autocomplete="current-password"></div>
+    <label class="zaznacz"><input type="checkbox" id="l-zapamietaj" checked> Zapamiętaj na tym komputerze</label>
+    <button class="btn btn-hr duzy" id="l-zaloguj">Zaloguj</button>
+    <div style="display:flex; justify-content:space-between; gap:10px; font-size:0.86rem">
+      <button class="link" id="l-przypomnij">Nie pamiętam hasła</button>
+    </div>
+    <button class="btn btn-bez btn-maly" id="l-bez">Pracuj bez logowania</button>`;
+  const zaloguj = async () => {
+    const login = $('#l-login').value.trim(), haslo = $('#l-haslo').value;
+    if (!login || !haslo) return $(login ? '#l-haslo' : '#l-login').focus();
+    $('#l-zaloguj').disabled = true;
+    $('#l-zaloguj').textContent = 'Logowanie…';
+    const r = await api('konto_zaloguj', login, haslo, $('#l-zapamietaj').checked);
+    if (!r?.ok) return ekranLogowania(r?.blad || 'Logowanie nie powiodło się.');
+    KONTO = r.stan;
+    $('#ekran-start').classList.add('ukryty');
+    toast(`Zalogowano: <b>${esc(KONTO.nazwa)}</b>${KONTO.szablon ? `<br>Raporty na papierze firmowym ${esc(KONTO.firma)}.` : ''}`, 'ok', null, 6000);
+    if (r.uwaga) toast(esc(r.uwaga), 'blad');
+    poZmianieKonta();
+  };
+  $('#l-zaloguj').onclick = zaloguj;
+  $$('#l-login, #l-haslo').forEach((el) => el.addEventListener('keydown', (e) => e.key === 'Enter' && zaloguj()));
+  $('#l-przypomnij').onclick = async () => {
+    const login = $('#l-login').value.trim();
+    if (!login) { toast('Wpisz login - wyślemy prośbę o nowe hasło do administratora.'); return $('#l-login').focus(); }
+    const r = await api('konto_przypomnij', login);
+    if (r?.ok) toast('Prośba o nowe hasło została wysłana. Administrator przyśle nowe hasło e-mailem.', 'ok', null, 9000);
+    else toast(esc(r?.blad || 'Nie udało się wysłać prośby.'), 'blad');
+  };
+  $('#l-bez').onclick = () => $('#ekran-start').classList.add('ukryty');
+  $('#l-login').focus();
 }
 
 // ------------------------------------------------------------------ konto Diamel (nieobowiązkowe): szablon raportu firmy, inicjały
@@ -132,7 +173,7 @@ async function odswiezKonto() {
   const r = await api('konto_odswiez');
   if (!r) return;
   KONTO = r.stan;
-  if (r.wylogowano) toast(`Wylogowano z konta Diamel: ${esc(r.wylogowano)} Raporty mają teraz stopkę programu.`, 'blad');
+  if (r.wylogowano) ekranLogowania(`Wylogowano z konta Diamel: ${r.wylogowano}`);
   odswiezDol();
   if (widok === 'ustawienia') rysujUstawienia();
   if (widok === 'obliczenia') rysujWyniki();
@@ -165,11 +206,11 @@ $$('.poz').forEach((b) => b.addEventListener('click', () => pokaz(b.dataset.wido
 $$('#motyw button').forEach((b) => b.addEventListener('click', () => zmienProgram('motyw', b.dataset.motyw)));
 
 function odswiezDol() {
-  $('#dol-projekt').innerHTML = (KONTO.zalogowany ? `Konto: <b>${esc(KONTO.nazwa)}</b>${KONTO.firma ? ` · ${esc(KONTO.firma)}` : ''}<br>` : '')
-    + (P._plik ? `Projekt: <b title="${esc(P._plik)}">${esc(nazwaPliku(P._plik))}</b>` : 'Projekt niezapisany');
+  $('#dol-konto').innerHTML = KONTO.zalogowany ? `Zalogowano: <b>${esc(KONTO.login)}</b>${KONTO.firma ? ` · ${esc(KONTO.firma)}` : ''}` : 'Bez logowania';
   $('#dol-baza').innerHTML = `Baza urządzeń: <b>v${esc(BAZA.wersja)}</b>${AKT_BAZY?.nowsza ? ` · <span class="akt-nowa" id="dol-baza-akt">nowa v${esc(AKT_BAZY.wersja)}</span>` : ''}`;
   const w = $('#dol-wersja');
-  w.innerHTML = `Program: <b>v${esc(INFO.wersja)}</b> ${AKT?.do_instalacji ? `· <span class="akt-nowa">${AKT.wycofana ? 'zalecana' : 'dostępna'} v${esc(AKT.wersja)}</span>` : AKT?.ok ? '<span class="akt-ok">· aktualny</span>' : ''}`;
+  w.innerHTML = AKT?.do_instalacji ? `<span class="akt-nowa">● ${AKT.wycofana ? 'zalecana wersja' : 'dostępna wersja'} ${esc(AKT.wersja)}</span>`
+    : `<span class="akt-ok">● v${esc(INFO.wersja || '')}${AKT?.ok ? ' · aktualna' : ''}</span>`;
   w.onclick = AKT?.do_instalacji ? oknoAktualizacji : null;
   $('#dol-baza-akt')?.addEventListener('click', () => aktualizujBaze(false));
   $('#licznik-baza').classList.toggle('ukryty', !AKT_BAZY?.nowsza);
@@ -183,6 +224,12 @@ async function sprawdzAktualizacje(recznie) {
   AKT = await api('sprawdz_aktualizacje');
   odswiezDol();
   if (widok === 'ustawienia') rysujUstawienia();
+  const miejsce = $('#start-aktualizacja');
+  if (AKT?.do_instalacji) {
+    miejsce.innerHTML = `<div class="baner zolty">${ik('pobierz')}<div class="tekst"><b>${AKT.wycofana ? `Zalecany powrót do wersji ${esc(AKT.wersja)}` : `Dostępna wersja ${esc(AKT.wersja)}`}</b>${AKT.wycofana ? 'W tej wersji wykryto błąd - zainstaluj zalecaną.' : 'Możesz zainstalować ją przed zalogowaniem.'}</div>
+      <button class="btn btn-maly" id="start-instaluj">Zainstaluj</button></div>`;
+    $('#start-instaluj').onclick = oknoAktualizacji;
+  } else miejsce.innerHTML = '';
   if (recznie) {
     if (!AKT?.ok) toast(`Nie udało się sprawdzić aktualizacji: ${esc(AKT?.blad || '')}`, 'blad');
     else if (AKT.do_instalacji) oknoAktualizacji();
@@ -328,7 +375,7 @@ function rysujPasek() {
   const tytul = $('#pasek-tytul'), nad = $('#pasek-nad'), prawe = $('#pasek-prawe');
   odswiezDol();
   if (widok !== 'obliczenia') {
-    nad.textContent = 'Kalkulator Rozruchu';
+    nad.textContent = widok === 'ustawienia' ? 'Program' : 'Kalkulator Rozruchu';
     tytul.textContent = { baza: 'Baza urządzeń', ustawienia: 'Ustawienia', zglos: 'Zgłoszenia' }[widok];
     prawe.innerHTML = '';
     return;
@@ -849,50 +896,33 @@ function przelacznik(id, wl) { return `<button class="przelacznik ${wl ? 'wl' : 
 function rysujUstawienia() {
   const el = $('#widok-ustawienia');
   const pr = INFO.program;
-  el.innerHTML = `<div class="siatka k2" style="align-items:start">
-    <div class="siatka">
-      <div class="karta"><h3>${ik('nowy')} Nowy projekt</h3><p class="opis">Wartości wpisywane w nowym projekcie.</p>
-        <div class="wiersz"><span class="et">Przygotował (inicjały)</span><input class="pole waski" id="u-autor" value="${esc(pr.autor)}"></div>
-        <div class="wiersz"><span class="et">Język raportu</span><div class="segment" id="u-jezyk">${[['English', 'Angielski'], ['Polski', 'Polski']].map(([v, t]) => `<button data-v="${v}" class="${pr.jezyk === v ? 'akt' : ''}">${t}</button>`).join('')}</div></div>
-      </div>
-      <div class="karta"><h3>${ik('word')} Raport</h3>
-        <div class="wiersz"><span class="et">Otwórz raport po zapisaniu</span>${przelacznik('u-otworz', pr.otworz_raport)}</div>
-        <div class="wiersz"><span class="et">Tolerancja CCA względem karty silnika<small>niedobór do tej wartości nie dyskwalifikuje akumulatorów (np. 10% = 200 A przy 2000 A)</small></span>
-          <div class="z-jednostka" style="width:110px"><input class="pole" id="u-cca-tol" value="${esc(pr.cca_tolerancja)}" inputmode="decimal"><span class="jedn">%</span></div></div>
-        <div class="wiersz"><span class="et">${KONTO.szablon ? 'Własny szablon (zastępuje papier firmowy)' : 'Szablon z nagłówkiem i stopką'}<small>${pr.szablon ? esc(pr.szablon) : KONTO.szablon ? `brak - raporty na papierze firmowym ${esc(KONTO.firma)} (z konta)` : 'brak - stopka programu (numer projektu, numer strony)'}</small></span>
-          <span class="wartosci">${pr.szablon ? '<button class="btn btn-maly btn-bez" id="u-szablon-usun">Usuń</button>' : ''}<button class="btn btn-maly" id="u-szablon">${ik('folder')} Wybierz…</button></span></div>
-        <p class="podp" style="margin:8px 0 0">Szablon to zwykły dokument Word (.docx) z Twoim nagłówkiem i stopką. Program bierze z niego nagłówek, stopkę, marginesy i rozmiar strony - treść szablonu pomija. PDF zapisuje Microsoft Word, więc stopka jest taka sama w PDF i DOCX. W nagłówku i stopce szablonu możesz wpisać pola, które program uzupełni: <b>{PROJEKT}</b> <b>{KLIENT}</b> <b>{AGREGAT}</b> <b>{SILNIK}</b> <b>{AUTOR}</b> <b>{DATA}</b> <b>{TYTUL}</b>.</p>
-      </div>
-      <div class="karta"><h3>${ik('obraz')} Wygląd</h3>
-        <div class="wiersz"><span class="et">Motyw</span><div class="segment" id="u-motyw">${[['jasny', 'Jasny'], ['ciemny', 'Ciemny'], ['system', 'Jak w Windows']].map(([v, t]) => `<button data-v="${v}" class="${pr.motyw === v ? 'akt' : ''}">${t}</button>`).join('')}</div></div>
-        <div class="wiersz"><span class="et">Wielkość tekstu</span><div class="segment" id="u-rozmiar">${[['maly', 'Mała'], ['normalny', 'Normalna'], ['duzy', 'Duża']].map(([v, t]) => `<button data-v="${v}" class="${pr.rozmiar === v ? 'akt' : ''}">${t}</button>`).join('')}</div></div>
-      </div>
-    </div>
-    <div class="siatka">
-      <div class="karta" id="karta-konta"><h3>${ik('ok')} Konto Diamel</h3>
-        ${KONTO.zalogowany ? `
-        <div class="wiersz"><span class="et"><b style="font-weight:600">${esc(KONTO.nazwa)}</b><small>login ${esc(KONTO.login)}${KONTO.inicjaly ? ` · inicjały w raportach: ${esc(KONTO.inicjaly)}` : ''}</small></span><button class="btn btn-maly" id="u-wyloguj">Wyloguj</button></div>
-        <div class="wiersz"><span class="et">Papier firmowy w raportach<small>${KONTO.szablon ? `${esc(KONTO.firma)} · ${esc(KONTO.szablon)}` : KONTO.firma ? `${esc(KONTO.firma)} nie ma jeszcze szablonu w panelu` : 'konto bez przypisanej firmy'}</small></span>${KONTO.szablon ? '<span class="status ok">aktywny</span>' : '<span class="status szary">brak</span>'}</div>`
-        : `<p class="opis">Logowanie nie jest obowiązkowe. Po zalogowaniu raporty mają papier firmowy Twojej firmy, a pole <i>Przygotował</i> - Twoje inicjały. Konto i dostęp do programu nadaje administrator.</p>
-        <div class="pola p2" style="margin-top:4px">
-          <div class="p-pole"><label class="etykieta" for="k-login">Login</label><input class="pole" id="k-login" autocomplete="username" spellcheck="false"></div>
-          <div class="p-pole"><label class="etykieta" for="k-haslo">Hasło</label><input class="pole" id="k-haslo" type="password" autocomplete="current-password"></div>
-        </div>
-        <div class="wiersz" style="border:0"><label class="zaznacz"><input type="checkbox" id="k-zapamietaj" checked> Zapamiętaj na tym komputerze</label><button class="btn btn-maly btn-hr" id="k-zaloguj">Zaloguj</button></div>`}
-      </div>
-      <div class="karta"><h3>${ik('pobierz')} Aktualizacje</h3>
-        ${AKT?.do_instalacji ? `<div class="baner zolty" style="margin:8px 0">${ik('pobierz')}<div class="tekst"><b>${AKT.wycofana ? `Zalecana wersja ${esc(AKT.wersja)}` : `Dostępna wersja ${esc(AKT.wersja)}`}</b>${AKT.wycofana ? 'W tej wersji wykryto błąd.' : 'Nowa wersja programu.'}</div><button class="btn btn-maly btn-hr" id="u-instaluj">Zainstaluj</button></div>` : ''}
-        <div class="wiersz"><span class="et">Program<small>wersja ${esc(INFO.wersja)} z ${esc(INFO.data)}</small></span><button class="btn btn-maly" id="u-akt">${ik('odswiez')} Sprawdź</button></div>
-        <div class="wiersz"><span class="et">Baza urządzeń<small>wersja ${esc(BAZA.wersja)}</small></span><button class="btn btn-maly" id="u-baza">${ik('odswiez')} Sprawdź</button></div>
-      </div>
-      <div class="karta"><h3>${ik('info')} O programie</h3>
-        <p class="opis">Kalkulator Rozruchu · © Diamel · <button class="link" id="u-strona">diamel.pl</button></p>
-        <pre class="changelog">${esc(INFO.changelog)}</pre>
-      </div>
-    </div></div>`;
+  const seg = (id, opcje, wartosc) => `<div class="segment" id="${id}">${opcje.map(([v, t]) => `<button data-v="${v}" class="${wartosc === v ? 'akt' : ''}">${t}</button>`).join('')}</div>`;
+  el.innerHTML = `<div class="siatka k2">
+    <section class="karta"><h3>${ik('obraz')} Wygląd</h3><p class="opis">Motyw możesz też zmienić w menu z lewej</p>
+      <div class="wiersz"><span class="et">Motyw</span>${seg('u-motyw', [['jasny', 'Jasny'], ['ciemny', 'Ciemny'], ['system', 'Jak w Windows']], pr.motyw)}</div>
+      <div class="wiersz"><span class="et">Wielkość tekstu</span>${seg('u-rozmiar', [['maly', 'Mała'], ['normalny', 'Normalna'], ['duzy', 'Duża']], pr.rozmiar)}</div></section>
+    <section class="karta"><h3>${ik('word')} Raporty</h3><p class="opis">Raport PDF / DOCX z obliczeń</p>
+      <div class="wiersz"><span class="et">Otwórz raport po zapisaniu</span>${przelacznik('u-otworz', pr.otworz_raport)}</div>
+      <div class="wiersz"><span class="et">Tolerancja CCA względem karty silnika<small>niedobór do tej wartości nie dyskwalifikuje akumulatorów (np. 10% = 200 A przy 2000 A)</small></span>
+        <div class="z-jednostka" style="width:130px; flex:none"><input class="pole" id="u-cca-tol" value="${esc(pr.cca_tolerancja)}" inputmode="decimal"><span class="jedn">%</span></div></div>
+      <div class="wiersz"><span class="et">${KONTO.szablon ? 'Własny szablon (zastępuje papier firmowy)' : 'Szablon z nagłówkiem i stopką'}<small>${pr.szablon ? esc(pr.szablon) : KONTO.szablon ? `brak - raporty na papierze firmowym ${esc(KONTO.firma)} (z konta)` : 'brak - stopka programu (numer projektu, numer strony)'}</small></span>
+        <span class="wartosci">${pr.szablon ? '<button class="btn btn-maly btn-bez" id="u-szablon-usun">Usuń</button>' : ''}<button class="btn btn-maly" id="u-szablon">${ik('folder')} Wybierz…</button></span></div>
+      <p class="podp" style="margin:8px 0 0">Szablon to zwykły dokument Word (.docx) z Twoim nagłówkiem i stopką. Program bierze z niego nagłówek, stopkę, marginesy i rozmiar strony - treść szablonu pomija. PDF zapisuje Microsoft Word, więc stopka jest taka sama w PDF i DOCX. W nagłówku i stopce szablonu możesz wpisać pola, które program uzupełni: <b>{PROJEKT}</b> <b>{KLIENT}</b> <b>{AGREGAT}</b> <b>{SILNIK}</b> <b>{AUTOR}</b> <b>{DATA}</b> <b>{TYTUL}</b>.</p></section>
+    <section class="karta"><h3>${ik('nowy')} Nowy projekt</h3><p class="opis">Wartości wpisywane w nowym projekcie</p>
+      <div class="wiersz"><span class="et">Przygotował (inicjały)${KONTO.inicjaly ? `<small>z konta: ${esc(KONTO.inicjaly)}</small>` : ''}</span><input class="pole waski" id="u-autor" value="${esc(pr.autor)}"></div>
+      <div class="wiersz"><span class="et">Język raportu</span>${seg('u-jezyk', [['English', 'Angielski'], ['Polski', 'Polski']], pr.jezyk)}</div></section>
+    <section class="karta"><h3>${ik('baza')} Konto i dane</h3><p class="opis">Konto Diamel i baza urządzeń z serwera diamel.pl</p>
+      <div class="wiersz"><span class="et">Zalogowano${KONTO.zalogowany ? `<small>${esc(KONTO.nazwa)}${KONTO.inicjaly ? ` · inicjały w raportach: ${esc(KONTO.inicjaly)}` : ''}</small>` : ''}</span><b>${KONTO.zalogowany ? esc(KONTO.login) : 'nie'}</b></div>
+      <div class="wiersz"><span class="et">Papier firmowy w raportach${KONTO.zalogowany ? `<small>${KONTO.szablon ? `${esc(KONTO.firma)} · ${esc(KONTO.szablon)}` : KONTO.firma ? `${esc(KONTO.firma)} nie ma jeszcze szablonu w panelu` : 'konto bez przypisanej firmy'}</small>` : ''}</span>${KONTO.szablon ? '<span class="status ok">aktywny</span>' : '<span class="status szary">brak</span>'}</div>
+      <div class="wiersz"><span class="et">Baza urządzeń</span><span class="mono">v${esc(BAZA.wersja)}</span></div>
+      <div class="wiersz"><span class="et"></span><span class="wartosci"><button class="btn btn-maly" id="u-baza">${ik('odswiez')} Sprawdź bazę</button>${KONTO.zalogowany ? '<button class="btn btn-maly btn-czerwony" id="u-wyloguj">Wyloguj</button>' : '<button class="btn btn-maly btn-hr" id="u-zaloguj">Zaloguj</button>'}</span></div></section>
+    <section class="karta" style="grid-column: span 2"><h3>${ik('pobierz')} O programie</h3><p class="opis">Kalkulator Rozruchu v${esc(INFO.wersja)} · ${esc(INFO.data)} · © Mateusz Kujawa, DIAMEL</p>
+      <div class="wiersz"><span class="et">${AKT?.do_instalacji ? `${AKT.wycofana ? 'Zalecana (starsza) wersja' : 'Dostępna wersja'} <b>${esc(AKT.wersja)}</b>` : 'Aktualizacje'}</span>
+        <span class="wartosci"><button class="btn btn-maly" id="u-zmiany">Historia zmian</button><button class="btn btn-maly" id="u-www">Strona programu</button><button class="btn btn-maly ${AKT?.do_instalacji ? 'btn-hr' : ''}" id="u-akt">${AKT?.do_instalacji ? 'Zainstaluj' : 'Sprawdź aktualizacje'}</button></span></div></section>
+  </div>`;
   $('#u-autor').onchange = (e) => zmienProgram('autor', e.target.value.trim());
-  const seg = (id, klucz) => $$(`#${id} button`).forEach((b) => b.onclick = async () => { await zmienProgram(klucz, b.dataset.v); rysujUstawienia(); });
-  seg('u-jezyk', 'jezyk'); seg('u-motyw', 'motyw'); seg('u-rozmiar', 'rozmiar');
+  const naSeg = (id, klucz) => $$(`#${id} button`).forEach((b) => b.onclick = async () => { await zmienProgram(klucz, b.dataset.v); rysujUstawienia(); });
+  naSeg('u-jezyk', 'jezyk'); naSeg('u-motyw', 'motyw'); naSeg('u-rozmiar', 'rozmiar');
   $('#u-cca-tol').onchange = async (e) => {
     const v = Number(String(e.target.value).replace(',', '.'));
     if (!(v >= 0 && v <= 50)) { toast('Tolerancja CCA: wpisz liczbę od 0 do 50 %.', 'blad'); e.target.value = INFO.program.cca_tolerancja; return; }
@@ -901,30 +931,19 @@ function rysujUstawienia() {
   };
   $('#u-otworz').onclick = async () => { await zmienProgram('otworz_raport', !INFO.program.otworz_raport); rysujUstawienia(); };
   $('#u-wyloguj')?.addEventListener('click', async () => {
-    const r = await api('konto_wyloguj');
-    KONTO = r.stan;
-    toast('Wylogowano - raporty mają teraz stopkę programu.', 'ok', null, 4000);
+    const w = await modal({ tytul: 'Wylogować?', tresc: '<p>Zapamiętany dostęp na tym komputerze zostanie usunięty, a raporty będą miały stopkę programu. Przy następnym uruchomieniu program zapyta o logowanie.</p>', przyciski: [{ tekst: 'Anuluj', wartosc: null, domyslny: true }, { tekst: 'Wyloguj', klasa: 'btn-czerwony', wartosc: 'tak' }] });
+    if (w !== 'tak') return;
+    KONTO = (await api('konto_wyloguj')).stan;
     poZmianieKonta();
+    ekranLogowania();
   });
-  const zaloguj = async () => {
-    const login = $('#k-login').value.trim(), haslo = $('#k-haslo').value;
-    if (!login || !haslo) return $(login ? '#k-haslo' : '#k-login').focus();
-    const b = $('#k-zaloguj'); b.disabled = true; b.textContent = 'Logowanie…';
-    const r = await api('konto_zaloguj', login, haslo, $('#k-zapamietaj').checked);
-    if (!r?.ok) { b.disabled = false; b.textContent = 'Zaloguj'; return toast(esc(r?.blad || 'Logowanie nie powiodło się.'), 'blad'); }
-    KONTO = r.stan;
-    toast(`Zalogowano: <b>${esc(KONTO.nazwa)}</b>${KONTO.szablon ? `<br>Raporty na papierze firmowym ${esc(KONTO.firma)}.` : ''}`, 'ok', null, 6000);
-    if (r.uwaga) toast(esc(r.uwaga), 'blad');
-    poZmianieKonta();
-  };
-  $('#k-zaloguj')?.addEventListener('click', zaloguj);
-  $$('#k-login, #k-haslo').forEach((el) => el.addEventListener('keydown', (e) => e.key === 'Enter' && zaloguj()));
+  $('#u-zaloguj')?.addEventListener('click', () => ekranLogowania());
   $('#u-szablon').onclick = async () => { INFO.program = await api('wybierz_szablon'); rysujUstawienia(); };
   $('#u-szablon-usun')?.addEventListener('click', async () => { await zmienProgram('szablon', ''); rysujUstawienia(); });
-  $('#u-akt').onclick = () => sprawdzAktualizacje(true);
   $('#u-baza').onclick = () => sprawdzBaze(true);
-  $('#u-instaluj')?.addEventListener('click', oknoAktualizacji);
-  $('#u-strona').onclick = () => api('otworz_strone', 'https://diamel.pl');
+  $('#u-zmiany').onclick = () => modal({ tytul: 'Historia zmian', szeroki: true, tresc: `<div style="white-space:pre-wrap; font-size:0.86rem; max-height:60vh; overflow:auto">${esc(INFO.changelog)}</div>`, przyciski: [{ tekst: 'Zamknij', wartosc: null }] });
+  $('#u-www').onclick = () => api('otworz_strone', 'https://github.com/Kuj0n/Diamel-Kalkulator-Rozruchu/releases');
+  $('#u-akt').onclick = () => (AKT?.do_instalacji ? oknoAktualizacji() : sprawdzAktualizacje(true));
 }
 
 // ------------------------------------------------------------------ zgłoszenia

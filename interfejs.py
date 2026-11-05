@@ -204,7 +204,7 @@ class Api:
     def sprawdz_baze(self):
         """Wersja bazy w panelu diamel.pl (numer zwiększany przy każdej zmianie) - inna niż lokalna = do pobrania."""
         try:
-            dane = wyslij_json(URL_BAZY, {"akcja": "wersja"}, timeout=6.0)
+            dane = wyslij_json(URL_BAZY, {"akcja": "wersja", "lokalna": str(self._baza.wersja), **({"token": konto.token()} if konto.token() else {})}, timeout=6.0)
         except Exception as e:
             return {"ok": False, "blad": str(e)}
         if not dane.get("ok"):

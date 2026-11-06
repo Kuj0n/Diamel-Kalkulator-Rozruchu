@@ -192,7 +192,9 @@ class Api:
 
     def uruchom_instalator(self):
         subprocess.run(["powershell", "-NoProfile", "-Command", f"Unblock-File -Path '{INSTALATOR}'"], shell=True)
-        subprocess.Popen([INSTALATOR, "/FORCECLOSEAPPLICATIONS", "/NOCANCEL"])
+        # Instalacja bez klikania: tylko okienko z paskiem postępu Inno Setup, po instalacji program uruchamia się sam
+        # (wpis [Run] z Check: WizardSilent - w instalatorach od tej wersji)
+        subprocess.Popen([INSTALATOR, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS", "/FORCECLOSEAPPLICATIONS", "/NOCANCEL"])
         os._exit(0)
 
     # ------------------------------------------------------------------ baza urządzeń

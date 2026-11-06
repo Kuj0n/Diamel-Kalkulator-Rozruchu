@@ -4,11 +4,15 @@ import sys
 # ==========================================
 # KONFIGURACJA I METADANE
 # ==========================================
-VERSION = "2.2.8"
+VERSION = "2.2.9"
 DB_VERSION = "0"  # wersja bazy, gdy lokalny plik jej nie zawiera (baza z panelu diamel.pl ma numer wersji 1, 2, 3...)
-BUILD_DATE = "2026-11-05 10:00"
+BUILD_DATE = "2026-11-06 15:00"
 
 CHANGELOG = """
+v2.2.9 (2026-11-06)
+- Aktualizacja bez klikania instalatora: program pobiera nową wersję, instaluje ją w tle i uruchamia się ponownie sam
+  (działa przy aktualizacjach z tej wersji na kolejne).
+
 v2.2.8 (2026-11-05)
 - Panel administracyjny: w dzienniku widać sprawdzenie bazy przy każdym uruchomieniu (aktualna / dostępna nowa).
 

@@ -139,6 +139,8 @@ Name: "{{autodesktop}}\\Kalkulator Rozruchu"; Filename: "{{app}}\\{nazwa_stala}.
 
 [Run]
 Filename: "{{app}}\\{nazwa_stala}.exe"; Description: "Uruchom Kalkulator"; Flags: nowait postinstall skipifsilent
+; aktualizacja z programu (instalacja w tle, /SILENT): program uruchamia się ponownie sam
+Filename: "{{app}}\\{nazwa_stala}.exe"; WorkingDir: "{{app}}"; Flags: nowait; Check: WizardSilent
 """
 plik_iss = os.path.join(folder_archiwum, "skrypt_instalatora.iss")
 with open(plik_iss, "w", encoding="utf-8") as f: f.write(inno_skrypt)

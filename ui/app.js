@@ -249,7 +249,11 @@ async function oknoAktualizacji() {
   modal({ tytul: 'Pobieranie aktualizacji…', tresc: '<div class="pasek-wyniku"><i id="akt-postep" style="width:0%"></i></div><p class="podp" id="akt-tekst" style="margin-top:10px">0%</p>' });
   window.postepAktualizacji = (p) => { const el = $('#akt-postep'); if (el) { el.style.width = `${p}%`; $('#akt-tekst').textContent = `${p}%`; } };
   window.aktualizacjaPobrana = (ok, blad) => {
-    if (ok) return api('uruchom_instalator');
+    if (ok) {
+      const t = $('#akt-tekst');
+      if (t) t.textContent = 'Instalowanie… Program zamknie się na chwilę i uruchomi ponownie sam.';
+      return setTimeout(() => api('uruchom_instalator'), 900);
+    }
     modalOtwarty?.zamknij();
     toast(`Nie udało się pobrać aktualizacji: ${esc(blad)}`, 'blad');
   };
